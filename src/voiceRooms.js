@@ -94,7 +94,7 @@ async function onVoiceStateUpdate(oldState, newState, client) {
   // 2) Track empty / active state for cleanup
   // If someone left a tracked private VC -> possibly mark empty_since
   if (oldState.channelId && oldState.channelId !== newState.channelId) {
-    const room = await get(`SELECT voice_id FROM private_rooms WHERE guild_id=? AND voice_id=?`, [guild.id, oldState.channelId]);
+    const room = await get(`SELECT owner_id FROM private_voice_rooms WHERE guild_id=? AND voice_channel_id=?`, [guild.id, oldState.channelId]);
     if (room) {
       const ch = oldState.channel;
       if (ch && ch.members.size === 0) {
@@ -105,7 +105,7 @@ async function onVoiceStateUpdate(oldState, newState, client) {
 
   // If someone joined a tracked private VC -> clear empty_since
   if (newState.channelId) {
-    const room = await get(`SELECT voice_id FROM private_rooms WHERE guild_id=? AND voice_id=?`, [guild.id, newState.channelId]);
+    const room = await get(`SELECT owner_id FROM private_voice_rooms WHERE guild_id=? AND voice_channel_id=?`, [guild.id, newState.channelId]);
     if (room) {
       await run(`UPDATE private_rooms SET empty_since=NULL WHERE guild_id=? AND voice_id=?`, [guild.id, newState.channelId]);
     }

@@ -218,8 +218,10 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
 // Private VC system
 // ─────────────────────────────────────────────────────
 
-client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
-  await onVoiceStateUpdate(oldState, newState, client);
+client.on(Events.VoiceStateUpdate, (oldState, newState) => {
+  onVoiceStateUpdate(oldState, newState, client).catch((err) => {
+    console.error("VoiceStateUpdate handler error:", err);
+  });
 });
 
 // ─────────────────────────────────────────────────────

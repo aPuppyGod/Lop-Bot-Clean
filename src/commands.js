@@ -1,311 +1,511 @@
 // src/commands.js
-const { PermissionsBitField } = require("discord.js");
-const { get, run, all } = require("./db");
-const { xpIntoLevel, levelFromXp } = require("./xp");
-const BOT_MANAGER_ID = process.env.BOT_MANAGER_ID || "";
+// Prefix commands for Lop Bot (XP + MEE6 import + Private VC controls)
 
-function isBotManager(member) {
-  return member?.id === BOT_MANAGER_ID;
+const { get, all, run } = require("./db");
+const { levelFromXp, progressFromTotalXp } = require("./xp");
+const { getGuildSettings } = require("./settings");
+
+// ====== CONFIG ======
+const PREFIX = "!";
+const MANAGER_ID = "900758140499398676"; // you (manager override)
+
+// If you want to permanently disable claim-all after first run, keep this true.
+// (It will still allow the manager to re-run if you manually re-enable in DB by deleting the flag.)
+const LOCK_CLAIM_ALL_AFTER_RUN = true;
+
+// ====== PERMS ======
+function isManager(userId) {
+  return userId === MANAGER_ID;
 }
 
-function isAdminOrManager(member) {
+function hasAdminPerms(member) {
   if (!member) return false;
-  if (isBotManager(member)) return true;
-  return member.permissions.has(PermissionsBitField.Flags.Administrator);
+  if (isManager(member.id)) return true;
+  if (member.guild && member.guild.ownerId === member.id) return true;
+  return member.permissions?.has?.("Administrator") || false;
+}
+
+function hasModPerms(member) {
+  if (!member) return false;
+  if (isManager(member.id)) return true;
+  return (
+    member.permissions?.has?.("ModerateMembers") ||
+    member.permissions?.has?.("ManageGuild") ||
+    member.permissions?.has?.("Administrator")
+  );
+}
+
+// ====== UTIL ======
+function parseArgs(content) {
+  // Splits by spaces while keeping quoted strings
+  const out = [];
+  let cur = "";
+  let inQ = false;
+
+  for (let i = 0; i < content.length; i++) {
+    const ch = content[i];
+    if (ch === '"') {
+      inQ = !inQ;
+      continue;
+    }
+    if (!inQ && /\s/.test(ch)) {
+      if (cur.length) out.push(cur);
+      cur = "";
+    } else {
+      cur += ch;
+    }
+  }
+  if (cur.length) out.push(cur);
+  return out;
+}
+
+function clamp(n, min, max) {
+  return Math.max(min, Math.min(max, n));
 }
 
 async function ensureUserRow(guildId, userId) {
   await run(
-    `INSERT OR IGNORE INTO user_xp (guild_id, user_id, xp, level) VALUES (?, ?, 0, 0)`,
+    `INSERT OR IGNORE INTO user_xp (guild_id, user_id, xp, level, last_message_xp_at, last_reaction_xp_at)
+     VALUES (?, ?, 0, 0, 0, 0)`,
     [guildId, userId]
   );
 }
 
-async function setUserXp(guildId, userId, xp) {
-  const lvl = levelFromXp(xp);
+async function setUserXp(guildId, userId, totalXp) {
+  await ensureUserRow(guildId, userId);
+  const lvl = levelFromXp(totalXp);
   await run(
-    `UPDATE user_xp SET xp = ?, level = ? WHERE guild_id = ? AND user_id = ?`,
-    [xp, lvl, guildId, userId]
+    `UPDATE user_xp SET xp=?, level=? WHERE guild_id=? AND user_id=?`,
+    [totalXp, lvl, guildId, userId]
+  );
+  return { xp: totalXp, level: lvl };
+}
+
+async function addUserXp(guildId, userId, deltaXp) {
+  await ensureUserRow(guildId, userId);
+  const row = await get(
+    `SELECT xp, level FROM user_xp WHERE guild_id=? AND user_id=?`,
+    [guildId, userId]
+  );
+  const newXp = (row?.xp || 0) + deltaXp;
+  const newLevel = levelFromXp(newXp);
+  await run(
+    `UPDATE user_xp SET xp=?, level=? WHERE guild_id=? AND user_id=?`,
+    [newXp, newLevel, guildId, userId]
+  );
+  return { oldLevel: row?.level || 0, newLevel, newXp };
+}
+
+async function getRankPosition(guildId, userId) {
+  const rows = await all(
+    `SELECT user_id FROM user_xp WHERE guild_id=? ORDER BY xp DESC, user_id ASC`,
+    [guildId]
+  );
+  const idx = rows.findIndex((r) => r.user_id === userId);
+  return idx === -1 ? null : idx + 1;
+}
+
+async function getUserRow(guildId, userId) {
+  await ensureUserRow(guildId, userId);
+  return await get(
+    `SELECT xp, level FROM user_xp WHERE guild_id=? AND user_id=?`,
+    [guildId, userId]
   );
 }
 
 function normalizeName(s) {
-  return (s || "").trim().toLowerCase();
+  return String(s || "").trim().toLowerCase();
 }
 
-
-
-// Match MEE6 username to exactly one guild member (safe mode: no guessing)
-async function findUniqueMemberMatch(guild, mee6Name) {
-  const target = normalizeName(mee6Name);
-
-  // Populate cache (needed for reliable matching)
-  await guild.members.fetch().catch(() => {});
-
-  const matches = [];
-  for (const [, m] of guild.members.cache) {
-    if (!m || m.user?.bot) continue;
-
-    const username = normalizeName(m.user.username);
-    const displayName = normalizeName(m.displayName);
-
-    if (username === target || displayName === target) matches.push(m);
-  }
-
-  if (matches.length === 1) return { member: matches[0], matchesCount: 1 };
-  return { member: null, matchesCount: matches.length };
+function bestDisplayName(member) {
+  // nickname/displayName is best for matching, but we’ll also check username/globalName
+  const u = member.user;
+  return (
+    member.displayName ||
+    u.globalName ||
+    u.username ||
+    ""
+  );
 }
 
-async function handleCommands(message) {
-  if (!message.guild || message.author.bot) return;
-  if (!message.content.startsWith("!")) return;
+// ====== PRIVATE VC HELPERS ======
+async function getRoomByTextChannel(guildId, textChannelId) {
+  return await get(
+    `SELECT * FROM private_voice_rooms WHERE guild_id=? AND text_channel_id=?`,
+    [guildId, textChannelId]
+  );
+}
 
-  const [cmdRaw, ...args] = message.content.slice(1).trim().split(/\s+/);
-  const cmd = (cmdRaw || "").toLowerCase();
+async function fetchVoiceChannel(guild, channelId) {
+  return await guild.channels.fetch(channelId).catch(() => null);
+}
 
+// ====== CLAIM-ALL LOCK FLAG (stored in guild_settings) ======
+async function ensureClaimFlagColumn() {
+  // harmless if already exists; ignore errors
+  try {
+    await run(`ALTER TABLE guild_settings ADD COLUMN claim_all_done INTEGER DEFAULT 0`);
+  } catch (_) {}
+}
+
+async function getClaimAllDone(guildId) {
+  await ensureClaimFlagColumn();
+  await run(`INSERT OR IGNORE INTO guild_settings (guild_id) VALUES (?)`, [guildId]);
+  const row = await get(`SELECT claim_all_done FROM guild_settings WHERE guild_id=?`, [guildId]);
+  return (row?.claim_all_done || 0) === 1;
+}
+
+async function setClaimAllDone(guildId, done) {
+  await ensureClaimFlagColumn();
+  await run(`UPDATE guild_settings SET claim_all_done=? WHERE guild_id=?`, [done ? 1 : 0, guildId]);
+}
+
+// ====== COMMANDS ======
+async function cmdRank(message, args) {
   const guildId = message.guild.id;
 
-  // =========================
-  // BASIC: !rank
-  // =========================
-  if (cmd === "rank") {
-    await ensureUserRow(guildId, message.author.id);
+  const target =
+    message.mentions.users.first() ||
+    message.author;
 
-    const row = await get(
-      `SELECT xp, level FROM user_xp WHERE guild_id=? AND user_id=?`,
-      [guildId, message.author.id]
-    );
+  const row = await getUserRow(guildId, target.id);
+  const pos = await getRankPosition(guildId, target.id);
 
-    const p = xpIntoLevel(row.xp);
-    return message.reply(
-      `Level **${p.level}** — XP: **${p.into}/${p.need}** (Total: ${row.xp})`
-    );
-  }
+  const prog = progressFromTotalXp(row.xp);
 
-  // !leaderboard [page]
-if (cmd === "leaderboard" || cmd === "lb") {
-  const page = Math.max(1, parseInt(args[0] || "1", 10) || 1);
+  await message.channel.send(
+    `🏅 **Rank for ${target.username}**\n` +
+    `• Rank: **#${pos ?? "?"}**\n` +
+    `• Level: **${prog.level}**\n` +
+    `• XP: **${prog.xpIntoLevel} / ${prog.xpToNext}** (Total: **${prog.totalXp}**)`
+  );
+}
+
+async function cmdLeaderboard(message, args) {
+  const guildId = message.guild.id;
+  const page = clamp(parseInt(args[0] || "1", 10) || 1, 1, 999);
+
   const perPage = 10;
   const offset = (page - 1) * perPage;
 
   const rows = await all(
-    `SELECT user_id, xp, level
-     FROM user_xp
-     WHERE guild_id = ?
-     ORDER BY xp DESC
-     LIMIT ? OFFSET ?`,
+    `SELECT user_id, xp FROM user_xp WHERE guild_id=? ORDER BY xp DESC, user_id ASC LIMIT ? OFFSET ?`,
     [guildId, perPage, offset]
   );
 
   if (!rows.length) {
-    return message.reply("No leaderboard data yet.");
+    return message.channel.send("No leaderboard data yet.");
   }
 
-  // Try to resolve usernames
-  await message.guild.members.fetch().catch(() => {});
-  const lines = rows.map((r, i) => {
-    const rank = offset + i + 1;
-    const member = message.guild.members.cache.get(r.user_id);
-    const name = member ? member.user.username : `Unknown (${r.user_id})`;
-    return `${rank}. **${name}** — Level ${r.level} (${r.xp} XP)`;
-  });
+  // Resolve users to names
+  const lines = [];
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const member = await message.guild.members.fetch(r.user_id).catch(() => null);
+    const name = member ? bestDisplayName(member) : `User ${r.user_id}`;
+    const lvl = levelFromXp(r.xp);
+    lines.push(
+      `${offset + i + 1}. **${name}** — Level **${lvl}** (${r.xp} XP)`
+    );
+  }
 
-  return message.reply(
-    `🏆 **Leaderboard (Page ${page})**\n` + lines.join("\n")
+  await message.channel.send(`🏆 **Leaderboard (Page ${page})**\n` + lines.join("\n"));
+}
+
+async function cmdXp(message, args) {
+  if (!hasAdminPerms(message.member)) {
+    return message.reply("❌ You don't have permission to use that.");
+  }
+
+  const guildId = message.guild.id;
+  const sub = (args[0] || "").toLowerCase();
+
+  if (sub !== "set" && sub !== "add") {
+    return message.channel.send(
+      `Usage:\n` +
+      `• \`!xp set @user <totalXP>\`\n` +
+      `• \`!xp add @user <amount>\``
+    );
+  }
+
+  const user = message.mentions.users.first();
+  if (!user) return message.reply("Tag a user: `!xp set @user 5000`");
+
+  const amount = parseInt(args[2], 10);
+  if (!Number.isFinite(amount) || amount < 0) return message.reply("Enter a valid number.");
+
+  if (sub === "set") {
+    const res = await setUserXp(guildId, user.id, amount);
+    return message.channel.send(`✅ Set ${user} to **${res.xp} XP** (Level **${res.level}**).`);
+  } else {
+    const res = await addUserXp(guildId, user.id, amount);
+    return message.channel.send(`✅ Added **${amount} XP** to ${user}. Total: **${res.newXp}** (Level **${res.newLevel}**).`);
+  }
+}
+
+async function cmdClaimAll(message) {
+  if (!hasAdminPerms(message.member)) {
+    return message.reply("❌ You don't have permission to use that.");
+  }
+
+  const guildId = message.guild.id;
+
+  // Optional one-time lock
+  if (LOCK_CLAIM_ALL_AFTER_RUN) {
+    const done = await getClaimAllDone(guildId);
+    if (done && !isManager(message.author.id)) {
+      return message.reply("❌ `!claim-all` has already been run once on this server.");
+    }
+  }
+
+  // Make sure we have all members cached for matching
+  await message.guild.members.fetch().catch(() => {});
+
+  const snapshots = await all(
+    `SELECT snapshot_username, snapshot_xp, claimed_user_id
+     FROM mee6_snapshot WHERE guild_id=?`,
+    [guildId]
+  );
+
+  if (!snapshots.length) {
+    return message.reply("No MEE6 snapshot found in the database.");
+  }
+
+  let matched = 0;
+  let skipped = 0;
+  let already = 0;
+
+  // Build lookup maps for quick matching
+  const members = Array.from(message.guild.members.cache.values()).filter((m) => !m.user.bot);
+
+  const byUsername = new Map();
+  const byDisplay = new Map();
+  const byGlobal = new Map();
+
+  for (const m of members) {
+    const u = m.user;
+    const un = normalizeName(u.username);
+    const dn = normalizeName(m.displayName);
+    const gn = normalizeName(u.globalName);
+
+    if (un) {
+      if (!byUsername.has(un)) byUsername.set(un, []);
+      byUsername.get(un).push(m);
+    }
+    if (dn) {
+      if (!byDisplay.has(dn)) byDisplay.set(dn, []);
+      byDisplay.get(dn).push(m);
+    }
+    if (gn) {
+      if (!byGlobal.has(gn)) byGlobal.set(gn, []);
+      byGlobal.get(gn).push(m);
+    }
+  }
+
+  await message.channel.send(
+    `⏳ Starting \`!claim-all\`... This will match snapshot usernames to current members by name.\n` +
+    `If a name matches multiple people or nobody, it will be skipped.`
+  );
+
+  for (const s of snapshots) {
+    if (s.claimed_user_id) {
+      already++;
+      continue;
+    }
+
+    const key = normalizeName(s.snapshot_username);
+    const candidates =
+      (byUsername.get(key) || []).concat(byGlobal.get(key) || []).concat(byDisplay.get(key) || []);
+
+    // Deduplicate candidates
+    const uniq = new Map();
+    for (const c of candidates) uniq.set(c.id, c);
+    const list = Array.from(uniq.values());
+
+    if (list.length !== 1) {
+      skipped++;
+      continue;
+    }
+
+    const member = list[0];
+
+    // Assign XP and recompute level from XP (MEE6 curve)
+    await setUserXp(guildId, member.id, Number(s.snapshot_xp));
+
+    // Mark claimed
+    await run(
+      `UPDATE mee6_snapshot SET claimed_user_id=?, claimed_at=? WHERE guild_id=? AND snapshot_username=?`,
+      [member.id, Date.now(), guildId, s.snapshot_username]
+    );
+
+    matched++;
+  }
+
+  if (LOCK_CLAIM_ALL_AFTER_RUN) {
+    await setClaimAllDone(guildId, true);
+  }
+
+  await message.channel.send(
+    `✅ Claim-all finished.\n` +
+    `• Matched & applied: **${matched}**\n` +
+    `• Skipped (no/ambiguous match): **${skipped}**\n` +
+    `• Already claimed rows: **${already}**\n\n` +
+    `Tip: If some were skipped, rename nicknames to match snapshot usernames and run again (manager can rerun).`
   );
 }
 
-  // =========================
-  // ADMIN: !claim-all (one-time migration)
-  // =========================
-  if (cmd === "claim-all") {
-    if (!message.member || !isAdminOrManager(message.member)) {
-      return message.reply("Admin only.");
-    }
-
-
-    const guild = message.guild;
-
-    // Only process entries that haven't been assigned yet
-    const entries = await all(
-      `SELECT mee6_name, xp, level, claimed_user_id
-       FROM mee6_snapshot
-       WHERE guild_id = ?
-         AND (claimed_user_id IS NULL OR claimed_user_id = '')`,
-      [guildId]
-    );
-
-    if (!entries.length) {
-      return message.reply("No unclaimed MEE6 entries found.");
-    }
-
-    let imported = 0;
-    let missing = 0;
-    let ambiguous = 0;
-
-    const missingList = [];
-    const ambiguousList = [];
-
-    // Optional: tell admin we started (helpful if many users)
-    await message.reply(
-      `Starting claim-all for **${entries.length}** MEE6 entries... (this may take a moment)`
-    );
-
-    for (const e of entries) {
-      const { member, matchesCount } = await findUniqueMemberMatch(
-        guild,
-        e.mee6_name
-      );
-
-      if (!member) {
-        if (matchesCount === 0) {
-          missing++;
-          missingList.push(e.mee6_name);
-        } else {
-          ambiguous++;
-          ambiguousList.push(`${e.mee6_name} (${matchesCount} matches)`);
-        }
-        continue;
-      }
-
-      await ensureUserRow(guildId, member.id);
-      await setUserXp(guildId, member.id, e.xp);
-
-      // Lock this mee6_name to this Discord user id so it can't be re-used
-      await run(
-        `UPDATE mee6_snapshot SET claimed_user_id=? WHERE guild_id=? AND mee6_name=?`,
-        [member.id, guildId, e.mee6_name]
-      );
-
-      imported++;
-    }
-
-    let summary =
-      `✅ Claim-all finished.\n` +
-      `Imported (unique matches): **${imported}**\n` +
-      `Missing (no match): **${missing}**\n` +
-      `Ambiguous (duplicates): **${ambiguous}**`;
-
-    // Avoid huge spam: show examples only
-    if (missingList.length) {
-      summary +=
-        `\n\nMissing examples: ${missingList.slice(0, 15).join(", ")}${
-          missingList.length > 15 ? " ..." : ""
-        }`;
-    }
-
-    if (ambiguousList.length) {
-      summary +=
-        `\n\nAmbiguous examples: ${ambiguousList.slice(0, 15).join(", ")}${
-          ambiguousList.length > 15 ? " ..." : ""
-        }`;
-    }
-
-    summary +=
-      `\n\nTip: for the missing/ambiguous ones, you can either rename-match them temporarily or manually edit the DB (recommended if only a few).`;
-
-    return message.reply(summary);
+async function cmdRecalcLevels(message) {
+  if (!hasAdminPerms(message.member)) {
+    return message.reply("❌ You don't have permission to use that.");
   }
 
-  // =========================
-  // VOICE OWNER/ADMIN COMMANDS
-  // (ONLY inside paired private text channel)
-  // =========================
-  if (cmd.startsWith("voice-")) {
-    const room = await get(
-      `SELECT owner_id, voice_id, text_id FROM private_rooms WHERE guild_id=? AND text_id=?`,
-      [guildId, message.channel.id]
-    );
+  const guildId = message.guild.id;
+  const rows = await all(`SELECT user_id, xp FROM user_xp WHERE guild_id=?`, [guildId]);
 
-    if (!room) {
-      return message.reply(
-        "These commands only work inside a private VC's command text channel."
-      );
-    }
+  for (const r of rows) {
+    const lvl = levelFromXp(r.xp);
+    await run(`UPDATE user_xp SET level=? WHERE guild_id=? AND user_id=?`, [lvl, guildId, r.user_id]);
+  }
 
-    const member = message.member;
-    if (!member) return;
+  await message.channel.send(`✅ Recalculated levels for **${rows.length}** users using the MEE6 curve.`);
+}
 
-    if (!isAdminOrManager(member) && member.id !== room.owner_id) {
-      return message.reply("Only the VC owner, bot manager, or admins can use these commands.");
-    }
+async function cmdHelp(message) {
+  const lines = [
+    `**Lop Bot Commands**`,
+    `• \`!rank [@user]\` — show rank card info`,
+    `• \`!leaderboard [page]\` — top XP leaderboard`,
+    ``,
+    `**Admin / Manager**`,
+    `• \`!claim-all\` — apply MEE6 snapshot XP to matching members (one-time)`,
+    `• \`!xp set @user <totalXP>\` — set XP`,
+    `• \`!xp add @user <amount>\` — add XP`,
+    `• \`!recalc-levels\` — recompute levels from XP (MEE6 curve)`,
+    ``,
+    `**Private VC (in the temp VC text channel only)**`,
+    `• \`!voice-limit <num>\``,
+    `• \`!voice-lock\` / \`!voice-unlock\``,
+    `• \`!voice-rename "new name"\``,
+    `• \`!voice-ban @user\``
+  ];
 
+  await message.channel.send(lines.join("\n"));
+}
 
-    const voiceChannel = await message.guild.channels
-      .fetch(room.voice_id)
-      .catch(() => null);
+// ====== PRIVATE VC COMMANDS ======
+async function ensureRoomCommandContext(message) {
+  const guildId = message.guild.id;
+  const room = await getRoomByTextChannel(guildId, message.channel.id);
+  if (!room) return { ok: false, room: null, error: "This command can only be used in the private VC text channel." };
 
-    if (!voiceChannel) {
-      return message.reply("That private VC no longer exists.");
-    }
+  // Permission: owner OR admin/mod OR manager
+  const isOwner = message.author.id === room.owner_id;
+  const can = isOwner || hasAdminPerms(message.member) || hasModPerms(message.member);
+  if (!can) return { ok: false, room, error: "Only the room owner or staff can use this here." };
 
-    // !voice-limit <num>
-    if (cmd === "voice-limit") {
-      const n = parseInt(args[0], 10);
-      if (!Number.isInteger(n) || n < 0 || n > 99) {
-        return message.reply("Usage: `!voice-limit 0-99`");
-      }
-      await voiceChannel.setUserLimit(n);
-      return message.reply(`Set user limit to **${n}**.`);
-    }
+  const voiceChannel = await fetchVoiceChannel(message.guild, room.voice_channel_id);
+  if (!voiceChannel) return { ok: false, room, error: "Voice channel no longer exists." };
 
-    // !voice-lock
-    if (cmd === "voice-lock") {
-      await voiceChannel.permissionOverwrites.edit(
-        message.guild.roles.everyone,
-        { Connect: false }
-      );
-      return message.reply("Locked the VC (everyone can't connect).");
-    }
+  return { ok: true, room, voiceChannel };
+}
 
-    // !voice-unlock
-    if (cmd === "voice-unlock") {
-      await voiceChannel.permissionOverwrites.edit(
-        message.guild.roles.everyone,
-        { Connect: null }
-      );
-      return message.reply("Unlocked the VC.");
-    }
+async function cmdVoiceLimit(message, args) {
+  const ctx = await ensureRoomCommandContext(message);
+  if (!ctx.ok) return message.reply(`❌ ${ctx.error}`);
 
-    // !voice-rename <name...>
-    if (cmd === "voice-rename") {
-      const name = args.join(" ").trim();
-      if (!name) return message.reply("Usage: `!voice-rename New Name`");
-      await voiceChannel.setName(name.slice(0, 100));
-      return message.reply(`Renamed VC to **${name}**.`);
-    }
+  const n = parseInt(args[0], 10);
+  if (!Number.isInteger(n) || n < 0 || n > 99) {
+    return message.reply("Usage: `!voice-limit <0-99>` (0 = no limit)");
+  }
 
-    // !voice-ban @user
-    if (cmd === "voice-ban") {
-      const target = message.mentions.members.first();
-      if (!target) return message.reply("Usage: `!voice-ban @user`");
+  await ctx.voiceChannel.setUserLimit(n).catch(() => null);
+  await message.reply(`✅ Voice user limit set to **${n}**.`);
+}
 
-      await voiceChannel.permissionOverwrites.edit(target.id, {
-        Connect: false,
-        ViewChannel: true
-      });
+async function cmdVoiceLock(message) {
+  const ctx = await ensureRoomCommandContext(message);
+  if (!ctx.ok) return message.reply(`❌ ${ctx.error}`);
 
-      if (target.voice?.channelId === voiceChannel.id) {
-        await target.voice.disconnect().catch(() => {});
-      }
+  const everyone = message.guild.roles.everyone;
+  await ctx.voiceChannel.permissionOverwrites.edit(everyone, { Connect: false }).catch(() => null);
+  await message.reply("🔒 VC locked (everyone can’t connect).");
+}
 
-      return message.reply(`Banned **${target.user.username}** from the VC.`);
-    }
+async function cmdVoiceUnlock(message) {
+  const ctx = await ensureRoomCommandContext(message);
+  if (!ctx.ok) return message.reply(`❌ ${ctx.error}`);
 
-    // !voice-unban @user
-    if (cmd === "voice-unban") {
-      const target = message.mentions.members.first();
-      if (!target) return message.reply("Usage: `!voice-unban @user`");
+  const everyone = message.guild.roles.everyone;
+  await ctx.voiceChannel.permissionOverwrites.edit(everyone, { Connect: null }).catch(() => null);
+  await message.reply("🔓 VC unlocked (everyone can connect).");
+}
 
-      await voiceChannel.permissionOverwrites.edit(target.id, {
-        Connect: null,
-        ViewChannel: null
-      });
+async function cmdVoiceRename(message, args) {
+  const ctx = await ensureRoomCommandContext(message);
+  if (!ctx.ok) return message.reply(`❌ ${ctx.error}`);
 
-      return message.reply(`Unbanned **${target.user.username}** from the VC.`);
-    }
+  const name = args.join(" ").trim();
+  if (!name) return message.reply('Usage: `!voice-rename "new name"`');
 
-    return message.reply("Unknown voice command.");
+  await ctx.voiceChannel.setName(name.slice(0, 100)).catch(() => null);
+  await message.reply(`✅ VC renamed to **${name.slice(0, 100)}**.`);
+}
+
+async function cmdVoiceBan(message) {
+  const ctx = await ensureRoomCommandContext(message);
+  if (!ctx.ok) return message.reply(`❌ ${ctx.error}`);
+
+  const target = message.mentions.members.first();
+  if (!target) return message.reply("Usage: `!voice-ban @user`");
+
+  await ctx.voiceChannel.permissionOverwrites.edit(target.id, { Connect: false }).catch(() => null);
+
+  // If they are currently inside, boot them out
+  if (target.voice?.channelId === ctx.voiceChannel.id) {
+    await target.voice.disconnect().catch(() => null);
+  }
+
+  await message.reply(`⛔ Banned ${target} from connecting to this VC.`);
+}
+
+// ====== MAIN HANDLER ======
+async function handleCommands(message) {
+  if (!message.guild) return;
+  if (message.author.bot) return;
+
+  const content = message.content || "";
+  if (!content.startsWith(PREFIX)) return;
+
+  const raw = content.slice(PREFIX.length).trim();
+  if (!raw) return;
+
+  const args = parseArgs(raw);
+  const cmd = (args.shift() || "").toLowerCase();
+
+  try {
+    if (cmd === "help" || cmd === "commands") return await cmdHelp(message);
+
+    if (cmd === "rank") return await cmdRank(message, args);
+    if (cmd === "leaderboard" || cmd === "lb") return await cmdLeaderboard(message, args);
+
+    // Admin/manager
+    if (cmd === "xp") return await cmdXp(message, args);
+    if (cmd === "claim-all" || cmd === "claimall") return await cmdClaimAll(message);
+    if (cmd === "recalc-levels" || cmd === "recalclevels") return await cmdRecalcLevels(message);
+
+    // Private VC commands (must be used in the temp text channel)
+    if (cmd === "voice-limit") return await cmdVoiceLimit(message, args);
+    if (cmd === "voice-lock") return await cmdVoiceLock(message);
+    if (cmd === "voice-unlock") return await cmdVoiceUnlock(message);
+    if (cmd === "voice-rename") return await cmdVoiceRename(message, args);
+    if (cmd === "voice-ban") return await cmdVoiceBan(message);
+
+    // Unknown command: ignore (or you can reply)
+    return;
+  } catch (e) {
+    console.error("Command error:", cmd, e);
+    return message.reply("❌ Something went wrong running that command.");
   }
 }
+
 module.exports = { handleCommands };
