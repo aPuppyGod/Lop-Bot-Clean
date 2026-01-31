@@ -23,6 +23,7 @@ function randInt(min, max) {
 }
 
 function formatLevelUpMessage(template, { user, level, xp }) {
+  // ⚠️ MESSAGE KEPT *EXACTLY* AS REQUESTED
   return String(
     template ||
       "🎉 Congratumalations {user}! you just advanced to the next **Lop Level {level}**! 🍪✨"
@@ -92,6 +93,7 @@ client.once(Events.ClientReady, async () => {
   await initDb();
   console.log(`Logged in as ${client.user.tag}`);
 
+  // Dashboard
   startDashboard(client);
 
   // Cleanup private VCs
@@ -121,6 +123,7 @@ client.once(Events.ClientReady, async () => {
 // ─────────────────────────────────────────────────────
 
 client.on(Events.MessageCreate, async (message) => {
+  // Commands first (important)
   await handleCommands(message);
 
   if (!message.guild || message.author.bot) return;
@@ -168,7 +171,8 @@ client.on(Events.MessageCreate, async (message) => {
         .fetch(settings.level_up_channel_id)
         .catch(() => null);
 
-      if (ch && ch.isTextBased && ch.isTextBased()) {
+      // ✅ FIX: ensure channel is text-based correctly
+      if (ch && typeof ch.isTextBased === "function" && ch.isTextBased()) {
         targetChannel = ch;
       }
     }
