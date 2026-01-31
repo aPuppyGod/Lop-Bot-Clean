@@ -243,6 +243,58 @@ async function cmdXp(message, args) {
   }
 }
 
+async function cmdImportMee6(message) {
+  if (!hasAdminPerms(message.member)) {
+    return message.reply("❌ You don't have permission to do this.");
+  }
+
+  const guildId = message.guild.id;
+
+  const fs = require("fs");
+  const path = require("path");
+  const snapshotPath = path.join(__dirname, "..", "data", "mee6_snapshot.json");
+
+  if (!fs.existsSync(snapshotPath)) {
+    return message.reply("❌ `data/mee6_snapshot.json` not found on server.");
+  }
+
+  let data;
+  try {
+    data = JSON.parse(fs.readFileSync(snapshotPath, "utf8"));
+  } catch (e) {
+    return message.reply("❌ Snapshot JSON is invalid.");
+  }
+
+  if (!Array.isArray(data)) {
+    return message.reply("❌ Snapshot must be an array.");
+  }
+
+  let inserted = 0;
+
+  for (const row of data) {
+    if (!row.username || typeof row.xp !== "number") continue;
+
+    await run(
+      `INSERT OR REPLACE INTO mee6_snapshot
+       (guild_id, snapshot_username, snapshot_xp, snapshot_level)
+       VALUES (?, ?, ?, ?)`,
+      [
+        guildId,
+        String(row.username),
+        Number(row.xp),
+        Number(row.level || 0)
+      ]
+    );
+
+    inserted++;
+  }
+
+  await message.channel.send(
+    `✅ Imported **${inserted}** MEE6 rows.\n` +
+    `Next step: run \`!claim-all\` to apply XP to members.`
+  );
+}
+
 async function cmdClaimAll(message) {
   if (!hasAdminPerms(message.member)) {
     return message.reply("❌ You don't have permission to use that.");
@@ -472,6 +524,7 @@ async function cmdVoiceBan(message) {
 async function handleCommands(message) {
   if (!message.guild) return;
   if (message.author.bot) return;
+  if (cmd === "import-mee6") return await cmdImportMee6(message);
 
   const content = message.content || "";
   if (!content.startsWith(PREFIX)) return;
