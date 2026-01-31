@@ -20,14 +20,14 @@ function isManager(userId) {
 
 function hasAdminPerms(member) {
   if (!member) return false;
-  if (isManager(member.id)) return true;
+  if (isManager(member.user?.id || member.id)) return true;
   if (member.guild && member.guild.ownerId === member.id) return true;
   return member.permissions?.has?.("Administrator") || false;
 }
 
 function hasModPerms(member) {
   if (!member) return false;
-  if (isManager(member.id)) return true;
+  if (isManager(member.user?.id || member.id)) return true;
   return (
     member.permissions?.has?.("ModerateMembers") ||
     member.permissions?.has?.("ManageGuild") ||
@@ -193,7 +193,9 @@ async function cmdLeaderboard(message, args) {
 
 // ====== IMPORT MEE6 ======
 async function cmdImportMee6(message) {
-  if (!hasAdminPerms(message.member)) return;
+  if (!hasAdminPerms(message.member)) {
+  return message.reply("❌ You need **Administrator** (or be the bot manager) to use this.");
+}
 
   if (!fs.existsSync(SNAPSHOT_FILE)) {
     return message.reply("mee6_snapshot.json not found.");
@@ -227,7 +229,9 @@ async function cmdImportMee6(message) {
 
 // ====== CLAIM ALL ======
 async function cmdClaimAll(message) {
-  if (!hasAdminPerms(message.member)) return;
+  if (!hasAdminPerms(message.member)) {
+  return message.reply("❌ You need **Administrator** (or be the bot manager) to use this.");
+}
 
   if (LOCK_CLAIM_ALL_AFTER_RUN) {
     const done = await getClaimAllDone(message.guild.id);
