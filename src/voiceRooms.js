@@ -10,7 +10,7 @@ async function onVoiceStateUpdate(oldState, newState, client) {
   const guild = newState.guild || oldState.guild;
   if (!guild) return;
 
-  const createName = (process.env.CREATE_VC_NAME || "create a private vc").toLowerCase();
+  const createName = (process.env.CREATE_VC_NAME || "Open private").toLowerCase();
   const emptyMinutes = parseInt(process.env.PRIVATE_VC_EMPTY_MINUTES || "5", 10);
   const now = Date.now();
 
