@@ -14,11 +14,15 @@ async function onVoiceStateUpdate(oldState, newState, client) {
   const emptyMinutes = parseInt(process.env.PRIVATE_VC_EMPTY_MINUTES || "5", 10);
   const now = Date.now();
 
+  const botId = client.user?.id;
+  if (!botId) return;
+
   // ─────────────────────────────────────────────
-  // 1) User joined a VC: if it's the "create" VC, create private VC + paired text channel
+  // 1) If user joined the "create a private vc" channel, create VC + paired text channel
   // ─────────────────────────────────────────────
   if (!oldState.channelId && newState.channelId) {
     const joined = newState.channel;
+
     if (joined && joined.name.toLowerCase() === createName) {
       const owner = newState.member;
       if (!owner) return;
@@ -28,12 +32,17 @@ async function onVoiceStateUpdate(oldState, newState, client) {
 
       const baseName = `${owner.user.username}'s VC`.slice(0, 90);
 
-      // Voice channel permissions
+      // ✅ VC is public: everyone can view/join/speak
+      // ✅ Owner is allowed as well
+      // ✅ Bot is explicitly allowed to manage/move
       const voiceOverwrites = [
         {
           id: guild.roles.everyone.id,
-          allow: [PermissionsBitField.Flags.ViewChannel],
-          // by default allow connect; lock command can disable Connect later
+          allow: [
+            PermissionsBitField.Flags.ViewChannel,
+            PermissionsBitField.Flags.Connect,
+            PermissionsBitField.Flags.Speak
+          ]
         },
         {
           id: owner.id,
@@ -42,10 +51,19 @@ async function onVoiceStateUpdate(oldState, newState, client) {
             PermissionsBitField.Flags.Connect,
             PermissionsBitField.Flags.Speak
           ]
+        },
+        {
+          id: botId,
+          allow: [
+            PermissionsBitField.Flags.ViewChannel,
+            PermissionsBitField.Flags.Connect,
+            PermissionsBitField.Flags.Speak,
+            PermissionsBitField.Flags.ManageChannels,
+            PermissionsBitField.Flags.MoveMembers
+          ]
         }
       ];
 
-      // Create voice channel
       const voiceChannel = await guild.channels.create({
         name: baseName,
         type: ChannelType.GuildVoice,
@@ -53,11 +71,20 @@ async function onVoiceStateUpdate(oldState, newState, client) {
         permissionOverwrites: voiceOverwrites
       });
 
-      // Paired text channel permissions (private)
+      // ✅ Everyone can view the commands channel (read-only)
+      // ✅ Only owner can send messages (so random people can’t spam commands)
+      // ✅ Admins/Manager can still use commands due to server perms + commands.js checks
+      // ✅ Bot can send/read/manage
       const textOverwrites = [
         {
           id: guild.roles.everyone.id,
-          deny: [PermissionsBitField.Flags.ViewChannel]
+          allow: [
+            PermissionsBitField.Flags.ViewChannel,
+            PermissionsBitField.Flags.ReadMessageHistory
+          ],
+          deny: [
+            PermissionsBitField.Flags.SendMessages
+          ]
         },
         {
           id: owner.id,
@@ -65,6 +92,15 @@ async function onVoiceStateUpdate(oldState, newState, client) {
             PermissionsBitField.Flags.ViewChannel,
             PermissionsBitField.Flags.SendMessages,
             PermissionsBitField.Flags.ReadMessageHistory
+          ]
+        },
+        {
+          id: botId,
+          allow: [
+            PermissionsBitField.Flags.ViewChannel,
+            PermissionsBitField.Flags.SendMessages,
+            PermissionsBitField.Flags.ReadMessageHistory,
+            PermissionsBitField.Flags.ManageChannels
           ]
         }
       ];
@@ -76,7 +112,7 @@ async function onVoiceStateUpdate(oldState, newState, client) {
         permissionOverwrites: textOverwrites
       });
 
-      // Save to DB (THIS was failing before)
+      // Save to DB
       await run(
         `INSERT OR REPLACE INTO private_voice_rooms
          (guild_id, owner_id, voice_channel_id, text_channel_id, created_at, last_active_at)
@@ -84,32 +120,37 @@ async function onVoiceStateUpdate(oldState, newState, client) {
         [guild.id, owner.id, voiceChannel.id, textChannel.id, now, now]
       );
 
-      // Move the user into their new VC
-      // NOTE: bot must have "Move Members" permission in that category/server
-      await owner.voice.setChannel(voiceChannel).catch((e) => {
-        console.error("Failed to move member into private VC:", e);
-      });
+      // Move creator into their new VC
+      try {
+        await owner.voice.setChannel(voiceChannel);
+      } catch (e) {
+        console.error("Failed to move member into private VC. Check Move Members permission:", e);
+      }
 
       // Send command list message
-      await textChannel.send(
-        `This channel controls **${voiceChannel.name}**.\n` +
-          `Commands (owner/admin/manager only):\n` +
-          `• \`!voice-limit <0-99>\`\n` +
-          `• \`!voice-lock\` / \`!voice-unlock\`\n` +
-          `• \`!voice-rename <name>\`\n` +
-          `• \`!voice-ban @user\`\n\n` +
-          `When the VC stays empty for **${emptyMinutes} minutes**, both channels will auto-delete.`
-      );
+      try {
+        await textChannel.send(
+          `This channel controls **${voiceChannel.name}**.\n` +
+            `Commands (owner/admin/manager only):\n` +
+            `• \`!voice-limit <0-99>\`\n` +
+            `• \`!voice-lock\` / \`!voice-unlock\`\n` +
+            `• \`!voice-rename <name>\`\n` +
+            `• \`!voice-ban @user\`\n\n` +
+            `When the VC stays empty for **${emptyMinutes} minutes**, both channels will auto-delete.`
+        );
+      } catch (e) {
+        console.error("Failed to send command list into the VC text channel:", e);
+      }
 
       return;
     }
   }
 
   // ─────────────────────────────────────────────
-  // 2) Track activity for private rooms
+  // 2) Track activity for cleanup
   // ─────────────────────────────────────────────
 
-  // If someone left a channel, and it becomes empty: mark last_active_at to "now" and let cleanup handle it
+  // If someone left a tracked VC and it became empty, mark last_active_at
   if (oldState.channelId && oldState.channelId !== newState.channelId) {
     const room = await get(
       `SELECT voice_channel_id FROM private_voice_rooms WHERE guild_id=? AND voice_channel_id=?`,
@@ -127,7 +168,7 @@ async function onVoiceStateUpdate(oldState, newState, client) {
     }
   }
 
-  // If someone joined a private VC: update last_active_at
+  // If someone joined a tracked VC, update last_active_at
   if (newState.channelId) {
     const room = await get(
       `SELECT voice_channel_id FROM private_voice_rooms WHERE guild_id=? AND voice_channel_id=?`,
@@ -161,7 +202,7 @@ async function cleanupPrivateRooms(client) {
     const voice = await guild.channels.fetch(r.voice_channel_id).catch(() => null);
     const text = await guild.channels.fetch(r.text_channel_id).catch(() => null);
 
-    // If voice channel is gone, clean DB + text (if exists)
+    // If voice channel is gone, clean DB + text
     if (!voice) {
       if (text) await text.delete("Orphaned private VC text channel").catch(() => {});
       await run(
@@ -171,7 +212,7 @@ async function cleanupPrivateRooms(client) {
       continue;
     }
 
-    // Only delete if empty AND has been empty/inactive long enough
+    // Only delete if empty long enough
     const isEmpty = voice.members?.size === 0;
     if (!isEmpty) continue;
 
