@@ -19,7 +19,43 @@ const { getIgnoredChannels } = require("./settings");
 const { startDashboard } = require("./dashboard");
 
 // ─────────────────────────────────────────────────────
-// Helpers
+// Helper functions
+// ─────────────────────────────────────────────────────
+
+function normalizeText(text) {
+  // Map common Unicode variations to ASCII
+  const unicodeMap = {
+    // Script (mathematical)
+    '𝓪': 'a', '𝓫': 'b', '𝓬': 'c', '𝓭': 'd', '𝓮': 'e', '𝓯': 'f', '𝓰': 'g', '𝓱': 'h', '𝓲': 'i', '𝓳': 'j',
+    '𝓴': 'k', '𝓵': 'l', '𝓶': 'm', '𝓷': 'n', '𝓸': 'o', '𝓹': 'p', '𝓺': 'q', '𝓻': 'r', '𝓼': 's', '𝓽': 't',
+    '𝓾': 'u', '𝓿': 'v', '𝔀': 'w', '𝔁': 'x', '𝔂': 'y', '𝔃': 'z',
+    '𝓐': 'a', '𝓑': 'b', '𝓒': 'c', '𝓓': 'd', '𝓔': 'e', '𝓕': 'f', '𝓖': 'g', '𝓗': 'h', '𝓘': 'i', '𝓙': 'j',
+    '𝓚': 'k', '𝓛': 'l', '𝓜': 'm', '𝓝': 'n', '𝓞': 'o', '𝓟': 'p', '𝓠': 'q', '𝓡': 'r', '𝓢': 's', '𝓣': 't',
+    '𝓤': 'u', '𝓥': 'v', '𝓦': 'w', '𝓧': 'x', '𝓨': 'y', '𝓩': 'z',
+    // Accented
+    'á': 'a', 'à': 'a', 'â': 'a', 'ä': 'a', 'å': 'a', 'ã': 'a', 'æ': 'a',
+    'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e',
+    'í': 'i', 'ì': 'i', 'î': 'i', 'ï': 'i',
+    'ó': 'o', 'ò': 'o', 'ô': 'o', 'ö': 'o', 'ø': 'o', 'õ': 'o',
+    'ú': 'u', 'ù': 'u', 'û': 'u', 'ü': 'u',
+    'ý': 'y', 'ÿ': 'y',
+    'ñ': 'n',
+    'ç': 'c',
+    // Uppercase accented
+    'Á': 'a', 'À': 'a', 'Â': 'a', 'Ä': 'a', 'Å': 'a', 'Ã': 'a', 'Æ': 'a',
+    'É': 'e', 'È': 'e', 'Ê': 'e', 'Ë': 'e',
+    'Í': 'i', 'Ì': 'i', 'Î': 'i', 'Ï': 'i',
+    'Ó': 'o', 'Ò': 'o', 'Ô': 'o', 'Ö': 'o', 'Ø': 'o', 'Õ': 'o',
+    'Ú': 'u', 'Ù': 'u', 'Û': 'u', 'Ü': 'u',
+    'Ý': 'y', 'Ÿ': 'y',
+    'Ñ': 'n',
+    'Ç': 'c',
+    // Add more as needed
+  };
+
+  return text.replace(/./g, char => unicodeMap[char] || char);
+}
+
 // ─────────────────────────────────────────────────────
 
 function randInt(min, max) {
@@ -194,6 +230,7 @@ client.on(Events.MessageCreate, async (message) => {
 
   // React to special words
   const content = message.content.toLowerCase();
+  const normalizedContent = normalizeText(content);
   if (content.includes('riley')) {
     await message.react('🍪').catch(() => {});
   }
@@ -209,7 +246,7 @@ client.on(Events.MessageCreate, async (message) => {
   if (content.includes('bean')) {
     await message.react(':Cheesecake:').catch(() => {});
   }
-  if (content.includes('mido') || content.includes('midory') || content.includes('midoryi') || content.includes('seka') || content.includes('midoryiseka') || content.includes('lop') || content.includes('loppy') || content.includes('loptube') || content.includes('antoine') || content.includes('løp') || content.includes('löp') || content.includes('𝓵𝓸𝓹') || content.includes('𝓜𝓲𝓭ø𝓻𝔂𝓲𝓢𝓮𝓴å') || content.includes('mïdo') || content.includes('mídory') || content.includes('séka') || content.includes('ántoine')) {
+  if (normalizedContent.includes('mido') || normalizedContent.includes('midory') || normalizedContent.includes('midoryi') || normalizedContent.includes('seka') || normalizedContent.includes('midoryiseka') || normalizedContent.includes('lop') || normalizedContent.includes('loppy') || normalizedContent.includes('loptube') || normalizedContent.includes('antoine')) {
     await message.react('🦝').catch(() => {});
   }
 
