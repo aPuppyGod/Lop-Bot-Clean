@@ -242,6 +242,12 @@ async function cmdStealCookie(message, args) {
   await message.reply(`You stole a cookie from ${target}! 🍪`).catch(() => {});
 }
 
+async function cmdStealCookiesFromEveryone(message) {
+  if (!message.guild) return;
+
+  await message.reply(`BREAKING NEWS ${message.author} IS A HUNGRY AHH BIG BACK TRYING TO STEAL COOKIES FROM EVERYONE!`).catch(() => {});
+}
+
 async function cmdRiley(message) {
   if (!message.guild) return;
 
@@ -677,6 +683,11 @@ async function handleCommands(message) {
 
   if (cmd === "steal-cookie") {
     await cmdStealCookie(message, args);
+    return true;
+  }
+
+  if (cmd === "steal-cookies-from-everyone") {
+    await cmdStealCookiesFromEveryone(message);
     return true;
   }
 
