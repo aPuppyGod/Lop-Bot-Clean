@@ -71,19 +71,15 @@ async function onVoiceStateUpdate(oldState, newState, client) {
         permissionOverwrites: voiceOverwrites
       });
 
-      // ✅ Everyone can view the commands channel (read-only)
-      // ✅ Only owner can send messages (so random people can’t spam commands)
-      // ✅ Admins/Manager can still use commands due to server perms + commands.js checks
+      // ✅ Command channel: only owner, admins, and managers can view
+      // ✅ Owner can send messages
+      // ✅ Admins/Managers can send due to server perms
       // ✅ Bot can send/read/manage
       const textOverwrites = [
         {
           id: guild.roles.everyone.id,
-          allow: [
-            PermissionsBitField.Flags.ViewChannel,
-            PermissionsBitField.Flags.ReadMessageHistory
-          ],
           deny: [
-            PermissionsBitField.Flags.SendMessages
+            PermissionsBitField.Flags.ViewChannel
           ]
         },
         {
@@ -93,17 +89,35 @@ async function onVoiceStateUpdate(oldState, newState, client) {
             PermissionsBitField.Flags.SendMessages,
             PermissionsBitField.Flags.ReadMessageHistory
           ]
-        },
-        {
-          id: botId,
-          allow: [
-            PermissionsBitField.Flags.ViewChannel,
-            PermissionsBitField.Flags.SendMessages,
-            PermissionsBitField.Flags.ReadMessageHistory,
-            PermissionsBitField.Flags.ManageChannels
-          ]
         }
       ];
+
+      // Allow roles with admin/manager permissions to view
+      for (const [, role] of guild.roles.cache) {
+        if (role.permissions.has(PermissionsBitField.Flags.Administrator) ||
+            role.permissions.has(PermissionsBitField.Flags.ManageGuild) ||
+            role.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
+          textOverwrites.push({
+            id: role.id,
+            allow: [
+              PermissionsBitField.Flags.ViewChannel,
+              PermissionsBitField.Flags.SendMessages,
+              PermissionsBitField.Flags.ReadMessageHistory
+            ]
+          });
+        }
+      }
+
+      // Bot permissions
+      textOverwrites.push({
+        id: botId,
+        allow: [
+          PermissionsBitField.Flags.ViewChannel,
+          PermissionsBitField.Flags.SendMessages,
+          PermissionsBitField.Flags.ReadMessageHistory,
+          PermissionsBitField.Flags.ManageChannels
+        ]
+      });
 
       const textChannel = await guild.channels.create({
         name: `${owner.user.username}-vc-commands`.slice(0, 90),
