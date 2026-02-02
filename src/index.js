@@ -200,6 +200,12 @@ client.on(Events.MessageCreate, async (message) => {
   if (content.includes('blebber')) {
     await message.react('🐢').catch(() => {});
   }
+  if (content.includes('goodnight') || content.includes('good night')) {
+    await message.react(':eepy:').catch(() => {});
+  }
+  if (content.includes('good morning') || content.includes('goodmorning')) {
+    await message.react(':happi:').catch(() => {});
+  }
 
   const guildId = message.guild.id;
   const userId = message.author.id;
