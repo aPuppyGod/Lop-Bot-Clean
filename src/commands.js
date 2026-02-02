@@ -3,7 +3,6 @@ const { PermissionsBitField, ChannelType } = require("discord.js");
 const { get, all, run } = require("./db");
 const { levelFromXp, xpForLevel } = require("./xp");
 const { getLevelRoles } = require("./settings");
-const { getBirthdaySettings, setUserBirthday, getUserBirthday } = require("./settings");
 const fs = require("fs");
 const path = require("path");
 
@@ -118,9 +117,6 @@ async function cmdHelp(message) {
     "• `!rank [@user]` — show XP + level",
     "• `!leaderboard [page]` / `!lb [page]` — show top XP",
     "",
-    "**Birthdays**",
-    "• `!remember-birthday MM/DD` — set your birthday",
-    "",
     "**Private VC (only inside the VC’s paired commands channel)**",
     "• `!voice-limit <0-99>`",
     "• `!voice-lock` / `!voice-unlock`",
@@ -134,8 +130,6 @@ async function cmdHelp(message) {
     "• `!sync-roles`",
     "• `!import-mee6`",
     "• `!claim-all [force]`",
-    "• `!setup-birthday <channel-name>`",
-    "• `!remove-birthday-channel`",
   ];
 
   await message.reply(lines.join("\n")).catch(() => {});
@@ -591,9 +585,6 @@ async function cmdRemoveBirthdayChannel(message) {
   // Clear the birthday channel setting
   await updateBirthdaySettings(message.guild.id, { birthday_channel_id: null });
 
-  await message.reply("✅ Birthday channel has been deleted and removed. Birthday messages will no longer be sent.").catch(() => {});
-}
-
 // ─────────────────────────────────────────────────────
 // MEE6 Import
 // ─────────────────────────────────────────────────────
@@ -759,21 +750,6 @@ async function handleCommands(message) {
 
   if (cmd === "claim-all" || cmd === "claimall") {
     await cmdClaimAll(message);
-    return true;
-  }
-
-  if (cmd === "remember-birthday") {
-    await cmdRememberBirthday(message, args);
-    return true;
-  }
-
-  if (cmd === "setup-birthday") {
-    await cmdSetupBirthday(message, args);
-    return true;
-  }
-
-  if (cmd === "remove-birthday-channel") {
-    await cmdRemoveBirthdayChannel(message);
     return true;
   }
 

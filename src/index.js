@@ -16,7 +16,6 @@ const { onVoiceStateUpdate, cleanupPrivateRooms } = require("./voiceRooms");
 const { getGuildSettings } = require("./settings");
 const { getLevelRoles } = require("./settings");
 const { getIgnoredChannels } = require("./settings");
-const { getBirthdaySettings, getTodaysBirthdays } = require("./settings");
 const { startDashboard } = require("./dashboard");
 
 // ─────────────────────────────────────────────────────
@@ -210,7 +209,7 @@ client.once(Events.ClientReady, async () => {
         console.error("Birthday check error:", e);
       }
     }
-  }, 60_000); // Check every minute, but only act at midnight
+});
 
 // ─────────────────────────────────────────────────────
 // Message XP + Commands
