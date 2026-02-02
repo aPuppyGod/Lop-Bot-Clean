@@ -14,6 +14,7 @@ const { levelFromXp } = require("./xp");
 const { handleCommands } = require("./commands");
 const { onVoiceStateUpdate, cleanupPrivateRooms } = require("./voiceRooms");
 const { getGuildSettings } = require("./settings");
+const { getLevelRoles } = require("./settings");
 const { startDashboard } = require("./dashboard");
 
 // ─────────────────────────────────────────────────────
@@ -33,6 +34,48 @@ function formatLevelUpMessage(template, { user, level, xp }) {
     .replaceAll("{user}", user)
     .replaceAll("{level}", String(level))
     .replaceAll("{xp}", String(xp));
+}
+
+async function handleLevelUp(guild, userId, oldLevel, newLevel, message = null) {
+  const settings = await getGuildSettings(guild.id);
+
+  // Announcement if message provided
+  if (message) {
+    const text = formatLevelUpMessage(settings.level_up_message, {
+      user: `${message.author}`,
+      level: newLevel,
+      xp: await get(`SELECT xp FROM user_xp WHERE guild_id=? AND user_id=?`, [guild.id, userId]).then(r => r.xp)
+    });
+
+    let targetChannel = message.channel;
+
+    if (settings.level_up_channel_id) {
+      const ch = await guild.channels
+        .fetch(settings.level_up_channel_id)
+        .catch(() => null);
+
+      if (ch && typeof ch.isTextBased === "function" && ch.isTextBased()) {
+        targetChannel = ch;
+      }
+    }
+
+    await targetChannel.send(text).catch(() => {});
+  }
+
+  // Assign level role if configured
+  const levelRoles = await getLevelRoles(guild.id);
+  const roleData = levelRoles.find(r => r.level === newLevel);
+  if (roleData) {
+    try {
+      const member = await guild.members.fetch(userId);
+      const role = await guild.roles.fetch(roleData.role_id);
+      if (role && !member.roles.cache.has(role.id)) {
+        await member.roles.add(role);
+      }
+    } catch (e) {
+      console.error("Failed to assign level role:", e);
+    }
+  }
 }
 
 // ─────────────────────────────────────────────────────
@@ -115,7 +158,10 @@ client.once(Events.ClientReady, async () => {
         if (member.user.bot) continue;
         if (!member.voice?.channelId) continue;
 
-        await addXp(guild.id, member.id, voiceXp).catch(() => {});
+        const res = await addXp(guild.id, member.id, voiceXp);
+        if (res.newLevel > res.oldLevel) {
+          await handleLevelUp(guild, member.id, res.oldLevel, res.newLevel);
+        }
       }
     }
   }, 60_000);
@@ -161,28 +207,7 @@ client.on(Events.MessageCreate, async (message) => {
 
   // ── Level-up announcement ──
   if (res.newLevel > res.oldLevel) {
-    const settings = await getGuildSettings(guildId);
-
-    const text = formatLevelUpMessage(settings.level_up_message, {
-      user: `${message.author}`,
-      level: res.newLevel,
-      xp: res.newXp
-    });
-
-    let targetChannel = message.channel;
-
-    if (settings.level_up_channel_id) {
-      const ch = await message.guild.channels
-        .fetch(settings.level_up_channel_id)
-        .catch(() => null);
-
-      // ✅ FIX: ensure channel is text-based correctly
-      if (ch && typeof ch.isTextBased === "function" && ch.isTextBased()) {
-        targetChannel = ch;
-      }
-    }
-
-    await targetChannel.send(text).catch(() => {});
+    await handleLevelUp(message.guild, message.author.id, res.oldLevel, res.newLevel, message);
   }
 });
 
@@ -216,11 +241,15 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
   const now = Date.now();
   if (now - row.last_reaction_xp_at < cooldownMs) return;
 
-  await addXp(guildId, userId, gained);
+  const res = await addXp(guildId, userId, gained);
   await run(
     `UPDATE user_xp SET last_reaction_xp_at=? WHERE guild_id=? AND user_id=?`,
     [now, guildId, userId]
   );
+
+  if (res.newLevel > res.oldLevel) {
+    await handleLevelUp(msg.guild, userId, res.oldLevel, res.newLevel);
+  }
 });
 
 // ─────────────────────────────────────────────────────

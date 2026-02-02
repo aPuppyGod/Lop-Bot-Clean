@@ -2,6 +2,7 @@
 const { PermissionsBitField } = require("discord.js");
 const { get, all, run } = require("./db");
 const { levelFromXp, xpForLevel } = require("./xp");
+const { getLevelRoles } = require("./settings");
 
 // Change if you want another prefix
 const PREFIX = "!";
@@ -256,6 +257,76 @@ async function cmdRecalcLevels(message) {
   await message.reply(`Recalculated levels for **${changed}** users.`).catch(() => {});
 }
 
+async function cmdSyncRoles(message) {
+  if (!message.guild) return;
+
+  if (!isAdminOrManager(message.member)) {
+    await message.reply("You need to be an admin/manager to use this.").catch(() => {});
+    return;
+  }
+
+  const levelRoles = await getLevelRoles(message.guild.id);
+  if (!levelRoles.length) {
+    await message.reply("No level roles configured.").catch(() => {});
+    return;
+  }
+
+  const users = await all(
+    `SELECT user_id, level FROM user_xp WHERE guild_id=?`,
+    [message.guild.id]
+  );
+
+  let assigned = 0;
+  let removed = 0;
+
+  for (const user of users) {
+    const member = await message.guild.members.fetch(user.user_id).catch(() => null);
+    if (!member) continue;
+
+    // Determine roles the user should have: all roles for levels <= their level
+    const shouldHave = levelRoles.filter(r => r.level <= user.level).map(r => r.role_id);
+
+    // Roles they currently have that are level roles
+    const currentLevelRoles = member.roles.cache.filter(role => 
+      levelRoles.some(lr => lr.role_id === role.id)
+    ).map(role => role.id);
+
+    // Roles to add
+    const toAdd = shouldHave.filter(id => !currentLevelRoles.includes(id));
+
+    // Roles to remove (level roles they have but shouldn't)
+    const toRemove = currentLevelRoles.filter(id => !shouldHave.includes(id));
+
+    // Add roles
+    for (const roleId of toAdd) {
+      try {
+        const role = await message.guild.roles.fetch(roleId);
+        if (role) {
+          await member.roles.add(role);
+          assigned++;
+        }
+      } catch (e) {
+        console.error(`Failed to add role ${roleId} to ${member.user.tag}:`, e);
+      }
+    }
+
+    // Remove roles
+    for (const roleId of toRemove) {
+      try {
+        const role = await message.guild.roles.fetch(roleId);
+        if (role) {
+          await member.roles.remove(role);
+          removed++;
+        }
+      } catch (e) {
+        console.error(`Failed to remove role ${roleId} from ${member.user.tag}:`, e);
+      }
+    }
+  }
+
+  await message.reply(`Synced roles: **${assigned}** assigned, **${removed}** removed.`).catch(() => {});
+}
+
 // ─────────────────────────────────────────────────────
 // Private VC commands
 // ─────────────────────────────────────────────────────
@@ -423,6 +494,11 @@ async function handleCommands(message) {
 
   if (cmd === "recalc-levels" || cmd === "recalclevels") {
     await cmdRecalcLevels(message);
+    return true;
+  }
+
+  if (cmd === "sync-roles" || cmd === "syncroles") {
+    await cmdSyncRoles(message);
     return true;
   }
 
