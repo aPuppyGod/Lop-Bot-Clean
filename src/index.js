@@ -15,6 +15,7 @@ const { handleCommands } = require("./commands");
 const { onVoiceStateUpdate, cleanupPrivateRooms } = require("./voiceRooms");
 const { getGuildSettings } = require("./settings");
 const { getLevelRoles } = require("./settings");
+const { getIgnoredChannels } = require("./settings");
 const { startDashboard } = require("./dashboard");
 
 // ─────────────────────────────────────────────────────
@@ -152,11 +153,16 @@ client.once(Events.ClientReady, async () => {
     const voiceXp = parseInt(process.env.VOICE_XP_PER_MINUTE || "5", 10);
 
     for (const [, guild] of client.guilds.cache) {
+      const ignoredChannels = await getIgnoredChannels(guild.id);
       await guild.members.fetch().catch(() => {});
 
       for (const [, member] of guild.members.cache) {
         if (member.user.bot) continue;
         if (!member.voice?.channelId) continue;
+
+        // Check if voice channel is ignored
+        const isIgnored = ignoredChannels.some(c => c.channel_id === member.voice.channelId && c.channel_type === "voice");
+        if (isIgnored) continue;
 
         const res = await addXp(guild.id, member.id, voiceXp);
         if (res.newLevel > res.oldLevel) {
@@ -178,6 +184,11 @@ client.on(Events.MessageCreate, async (message) => {
   if (!message.guild || message.author.bot) return;
 
   console.log("[MSG]", message.guild?.id, message.channel?.id, message.author?.tag, message.content);
+
+  // Check if channel is ignored
+  const ignoredChannels = await getIgnoredChannels(guildId);
+  const isIgnored = ignoredChannels.some(c => c.channel_id === message.channel.id && c.channel_type === "text");
+  if (isIgnored) return;
 
   const guildId = message.guild.id;
   const userId = message.author.id;

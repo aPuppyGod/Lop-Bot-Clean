@@ -31,6 +31,7 @@ const UPSERT_KEYS = {
   user_xp: ["guild_id", "user_id"],
   guild_settings: ["guild_id"],
   level_roles: ["guild_id", "level"],
+  ignored_channels: ["guild_id", "channel_id"],
   mee6_snapshot: ["guild_id", "snapshot_username"],
   private_voice_rooms: ["guild_id", "voice_channel_id"]
 };
@@ -171,6 +172,16 @@ async function initDb() {
       level INTEGER NOT NULL,
       role_id TEXT NOT NULL,
       PRIMARY KEY (guild_id, level)
+    )
+  `);
+
+  // Ignored channels (for XP)
+  await run(`
+    CREATE TABLE IF NOT EXISTS ignored_channels (
+      guild_id TEXT NOT NULL,
+      channel_id TEXT NOT NULL,
+      channel_type TEXT NOT NULL,
+      PRIMARY KEY (guild_id, channel_id)
     )
   `);
 

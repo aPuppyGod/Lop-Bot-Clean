@@ -7,7 +7,10 @@ const {
   updateGuildSettings,
   getLevelRoles,
   setLevelRole,
-  deleteLevelRole
+  deleteLevelRole,
+  getIgnoredChannels,
+  addIgnoredChannel,
+  removeIgnoredChannel
 } = require("./settings");
 
 function mustBeLoggedIn(req, res, next) {
@@ -121,6 +124,7 @@ function startDashboard(client) {
 
     const settings = await getGuildSettings(guildId);
     const levelRoles = await getLevelRoles(guildId);
+    const ignoredChannels = await getIgnoredChannels(guildId);
 
     await guild.channels.fetch().catch(() => {});
     const textChannels = guild.channels.cache
@@ -191,6 +195,32 @@ function startDashboard(client) {
             Level ${r.level} → Role ID ${escapeHtml(r.role_id)}
             <form style="display:inline" method="post" action="/guild/${guildId}/level-roles/delete">
               <input type="hidden" name="level" value="${r.level}" />
+              <button type="submit">Delete</button>
+            </form>
+          </li>
+        `).join("")}
+      </ul>
+
+      <hr/>
+
+      <h3>Ignored Channels (No XP)</h3>
+      <form method="post" action="/guild/${guildId}/ignored-channels">
+        <label>Channel ID <input name="channel_id" /></label>
+        <label>Type 
+          <select name="channel_type">
+            <option value="text">Text</option>
+            <option value="voice">Voice</option>
+          </select>
+        </label>
+        <button type="submit">Add</button>
+      </form>
+
+      <ul>
+        ${ignoredChannels.map((c) => `
+          <li>
+            ${escapeHtml(c.channel_type)} Channel ID ${escapeHtml(c.channel_id)}
+            <form style="display:inline" method="post" action="/guild/${guildId}/ignored-channels/delete">
+              <input type="hidden" name="channel_id" value="${c.channel_id}" />
               <button type="submit">Delete</button>
             </form>
           </li>
@@ -321,6 +351,40 @@ function startDashboard(client) {
       return res.redirect(`/guild/${guildId}`);
     } catch (e) {
       console.error("level-roles delete error:", e);
+      return res.status(500).send("Internal Server Error");
+    }
+  });
+
+  // Ignored channels
+  // ─────────────────────────────────────────────
+  app.post("/guild/:guildId/ignored-channels", mustBeLoggedIn, async (req, res) => {
+    try {
+      const guildId = req.params.guildId;
+      const channelId = String(req.body.channel_id || "").trim();
+      const channelType = String(req.body.channel_type || "").trim();
+
+      if (!channelId) return res.status(400).send("Channel ID required.");
+      if (!["text", "voice"].includes(channelType)) return res.status(400).send("Invalid channel type.");
+
+      await addIgnoredChannel(guildId, channelId, channelType);
+      return res.redirect(`/guild/${guildId}`);
+    } catch (e) {
+      console.error("ignored-channels add error:", e);
+      return res.status(500).send("Internal Server Error");
+    }
+  });
+
+  app.post("/guild/:guildId/ignored-channels/delete", mustBeLoggedIn, async (req, res) => {
+    try {
+      const guildId = req.params.guildId;
+      const channelId = String(req.body.channel_id || "").trim();
+
+      if (!channelId) return res.status(400).send("Channel ID required.");
+
+      await removeIgnoredChannel(guildId, channelId);
+      return res.redirect(`/guild/${guildId}`);
+    } catch (e) {
+      console.error("ignored-channels delete error:", e);
       return res.status(500).send("Internal Server Error");
     }
   });

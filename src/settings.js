@@ -90,10 +90,38 @@ async function deleteLevelRole(guildId, level) {
   );
 }
 
+async function getIgnoredChannels(guildId) {
+  return await all(
+    `SELECT channel_id, channel_type
+     FROM ignored_channels
+     WHERE guild_id=?`,
+    [guildId]
+  );
+}
+
+async function addIgnoredChannel(guildId, channelId, channelType) {
+  await run(
+    `INSERT INTO ignored_channels (guild_id, channel_id, channel_type)
+     VALUES (?, ?, ?)
+     ON CONFLICT (guild_id, channel_id) DO NOTHING`,
+    [guildId, channelId, channelType]
+  );
+}
+
+async function removeIgnoredChannel(guildId, channelId) {
+  await run(
+    `DELETE FROM ignored_channels WHERE guild_id=? AND channel_id=?`,
+    [guildId, channelId]
+  );
+}
+
 module.exports = {
   getGuildSettings,
   updateGuildSettings,
   getLevelRoles,
   setLevelRole,
-  deleteLevelRole
+  deleteLevelRole,
+  getIgnoredChannels,
+  addIgnoredChannel,
+  removeIgnoredChannel
 };
