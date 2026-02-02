@@ -118,6 +118,9 @@ async function cmdHelp(message) {
     "• `!rank [@user]` — show XP + level",
     "• `!leaderboard [page]` / `!lb [page]` — show top XP",
     "",
+    "**Birthdays**",
+    "• `!remember-birthday MM/DD` — set your birthday",
+    "",
     "**Private VC (only inside the VC’s paired commands channel)**",
     "• `!voice-limit <0-99>`",
     "• `!voice-lock` / `!voice-unlock`",
@@ -131,6 +134,8 @@ async function cmdHelp(message) {
     "• `!sync-roles`",
     "• `!import-mee6`",
     "• `!claim-all [force]`",
+    "• `!setup-birthday <channel-name>`",
+    "• `!remove-birthday-channel`",
   ];
 
   await message.reply(lines.join("\n")).catch(() => {});
@@ -555,6 +560,25 @@ async function cmdSetupBirthday(message, args) {
 }
 
 // ─────────────────────────────────────────────────────
+// Remove Birthday Channel
+// ─────────────────────────────────────────────────────
+
+async function cmdRemoveBirthdayChannel(message) {
+  if (!message.guild) return;
+
+  if (!isAdminOrManager(message.member)) {
+    await message.reply("❌ No permission. Only admins/managers can remove birthday channels.").catch(() => {});
+    return;
+  }
+
+  // Clear the birthday channel setting
+  const { updateBirthdaySettings } = require("./settings");
+  await updateBirthdaySettings(message.guild.id, { birthday_channel_id: null });
+
+  await message.reply("✅ Birthday channel has been removed. Birthday messages will no longer be sent.").catch(() => {});
+}
+
+// ─────────────────────────────────────────────────────
 // MEE6 Import
 // ─────────────────────────────────────────────────────
 
@@ -729,6 +753,11 @@ async function handleCommands(message) {
 
   if (cmd === "setup-birthday") {
     await cmdSetupBirthday(message, args);
+    return true;
+  }
+
+  if (cmd === "remove-birthday-channel") {
+    await cmdRemoveBirthdayChannel(message);
     return true;
   }
 
