@@ -16,6 +16,7 @@ const { onVoiceStateUpdate, cleanupPrivateRooms } = require("./voiceRooms");
 const { getGuildSettings } = require("./settings");
 const { getLevelRoles } = require("./settings");
 const { getIgnoredChannels } = require("./settings");
+const { getBirthdaySettings, getTodaysBirthdays } = require("./settings");
 const { startDashboard } = require("./dashboard");
 
 // ─────────────────────────────────────────────────────
@@ -183,7 +184,6 @@ client.once(Events.ClientReady, async () => {
 
     for (const [, guild] of client.guilds.cache) {
       try {
-        const { getBirthdaySettings, getTodaysBirthdays } = require("./settings");
         const settings = await getBirthdaySettings(guild.id);
         const birthdays = await getTodaysBirthdays(guild.id, month, day);
 
@@ -225,7 +225,7 @@ client.on(Events.MessageCreate, async (message) => {
   console.log("[MSG]", message.guild?.id, message.channel?.id, message.author?.tag, message.content);
 
   // Check if channel is ignored
-  const ignoredChannels = await getIgnoredChannels(guildId);
+  const ignoredChannels = await getIgnoredChannels(message.guild.id);
   const isIgnored = ignoredChannels.some(c => c.channel_id === message.channel.id && c.channel_type === "text");
   if (isIgnored) return;
 
