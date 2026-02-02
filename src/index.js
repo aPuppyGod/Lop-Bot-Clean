@@ -206,6 +206,9 @@ client.on(Events.MessageCreate, async (message) => {
   if (content.includes('good morning') || content.includes('goodmorning')) {
     await message.react(':happi:').catch(() => {});
   }
+  if (content.includes('bean')) {
+    await message.react(':Cheesecake:').catch(() => {});
+  }
 
   const guildId = message.guild.id;
   const userId = message.author.id;
