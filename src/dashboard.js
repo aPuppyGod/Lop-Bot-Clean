@@ -13,6 +13,74 @@ const {
   removeIgnoredChannel
 } = require("./settings");
 
+function htmlTemplate(content) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Bot Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Playfair Display', serif;
+      background: linear-gradient(135deg, #f5f5dc 0%, #ede0d4 50%, #f4e4bc 100%);
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
+    h2 {
+      color: #8b4513;
+      text-align: center;
+    }
+    h3 {
+      color: #a0522d;
+    }
+    button {
+      background-color: #daa520;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      cursor: pointer;
+      font-family: 'Playfair Display', serif;
+    }
+    button:hover {
+      background-color: #b8860b;
+    }
+    input, select {
+      padding: 5px;
+      border: 1px solid #daa520;
+      border-radius: 4px;
+    }
+    ul {
+      list-style-type: none;
+      padding: 0;
+    }
+    li {
+      margin: 5px 0;
+    }
+    a {
+      color: #8b4513;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    hr {
+      border: 0;
+      height: 1px;
+      background: linear-gradient(to right, transparent, #daa520, transparent);
+    }
+    form {
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  ${content}
+</body>
+</html>`;
+}
+
 function mustBeLoggedIn(req, res, next) {
   if (req.session && req.session.ok) return next();
   return res.redirect("/login");
@@ -72,7 +140,7 @@ function startDashboard(client) {
   // Auth
   // ─────────────────────────────────────────────
   app.get("/login", (req, res) => {
-    res.send(`
+    res.send(htmlTemplate(`
       <h2>Bot Dashboard Login</h2>
       <form method="post" action="/login">
         <input type="password" name="password" placeholder="Password" />
@@ -81,7 +149,7 @@ function startDashboard(client) {
       <p style="color:#666;max-width:720px">
         Tip: always use the same host (localhost OR 127.0.0.1) locally, or cookies can break.
       </p>
-    `);
+    `));
   });
 
   app.post("/login", (req, res) => {
@@ -104,14 +172,14 @@ function startDashboard(client) {
       .map((g) => ({ id: g.id, name: g.name }))
       .sort((a, b) => a.name.localeCompare(b.name));
 
-    res.send(`
+    res.send(htmlTemplate(`
       <h2>Dashboard</h2>
       <p><a href="/logout">Logout</a></p>
       <h3>Servers</h3>
       <ul>
         ${guilds.map((g) => `<li><a href="/guild/${g.id}">${escapeHtml(g.name)}</a></li>`).join("")}
       </ul>
-    `);
+    `));
   });
 
   // ─────────────────────────────────────────────
@@ -132,7 +200,7 @@ function startDashboard(client) {
       .map((c) => ({ id: c.id, name: c.name }))
       .sort((a, b) => a.name.localeCompare(b.name));
 
-    res.send(`
+    res.send(htmlTemplate(`
       <h2>${escapeHtml(guild.name)}</h2>
       <p><a href="/">Back</a> | <a href="/logout">Logout</a></p>
 
@@ -226,7 +294,7 @@ function startDashboard(client) {
           </li>
         `).join("")}
       </ul>
-    `);
+    `));
   });
 
   // ─────────────────────────────────────────────
