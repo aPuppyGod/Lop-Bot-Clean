@@ -214,6 +214,7 @@ async function cmdRank(message, args) {
   // Profile pic
   let avatarLoaded = false;
   let avatarURL = targetUser.displayAvatarURL({ format: "png", size: 128 });
+  console.log("Rank card avatar URL:", avatarURL);
   try {
     const avatar = await loadImage(avatarURL);
     ctx.save();
@@ -228,6 +229,7 @@ async function cmdRank(message, args) {
     // Try JPEG fallback
     try {
       avatarURL = targetUser.displayAvatarURL({ format: "jpg", size: 128 });
+      console.log("Rank card avatar JPEG fallback URL:", avatarURL);
       const avatar = await loadImage(avatarURL);
       ctx.save();
       ctx.beginPath();
@@ -238,20 +240,38 @@ async function cmdRank(message, args) {
       ctx.restore();
       avatarLoaded = true;
     } catch (e2) {
-      // fallback: draw a circle with initials
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(90, 90, 60, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.clip();
-      ctx.fillStyle = "#555";
-      ctx.fillRect(30, 30, 120, 120);
-      ctx.font = "bold 40px OpenSans";
-      ctx.fillStyle = "#fff";
-      const initials = targetUser.username ? targetUser.username[0].toUpperCase() : "?";
-      ctx.fillText(initials, 80, 120);
-      ctx.restore();
-      console.error("Avatar load failed for user:", targetUser.tag, e1, e2);
+      // Try direct fetch and buffer
+      try {
+        const fetch = require('node-fetch');
+        const res = await fetch(avatarURL);
+        if (res.ok) {
+          const buffer = await res.buffer();
+          const avatar = await loadImage(buffer);
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(90, 90, 60, 0, Math.PI * 2);
+          ctx.closePath();
+          ctx.clip();
+          ctx.drawImage(avatar, 30, 30, 120, 120);
+          ctx.restore();
+          avatarLoaded = true;
+        }
+      } catch (e3) {
+        // fallback: draw a circle with initials
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(90, 90, 60, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        ctx.fillStyle = "#555";
+        ctx.fillRect(30, 30, 120, 120);
+        ctx.font = "bold 40px OpenSans";
+        ctx.fillStyle = "#fff";
+        const initials = targetUser.username ? targetUser.username[0].toUpperCase() : "?";
+        ctx.fillText(initials, 80, 120);
+        ctx.restore();
+        console.error("Avatar load failed for user:", targetUser.tag, e1, e2, e3);
+      }
     }
   }
   // Calculate leaderboard rank
