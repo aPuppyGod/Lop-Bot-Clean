@@ -11,7 +11,7 @@ const userRankCardPrefs = {};
 const DiscordStrategy = require("passport-discord").Strategy;
 const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
-const DISCORD_CALLBACK_URL = process.env.DISCORD_CALLBACK_URL || "http://localhost:3000/auth/discord/callback";
+const DISCORD_CALLBACK_URL = process.env.DISCORD_CALLBACK_URL || "https://lop-bot-clean-production.up.railway.app";
 
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((obj, done) => done(null, obj));
@@ -325,25 +325,28 @@ function startDashboard(client) {
   });
     // Serve the user's customized rank card as an image, enforcing unlocks
     app.get("/lop/rankcard/image", async (req, res) => {
-      const userKey = req.ip;
-      const prefs = userRankCardPrefs[userKey] || {};
-      // TODO: Replace with real user ID and guild ID if available
-      const userId = req.user?.id || null;
-      const guildId = null; // If you have a way to get the user's guild, set it here
+      const sharp = require('sharp');
+      const path = require('path');
+      const { createCanvas, loadImage, registerFont } = require('canvas');
+      const { getCustomizationUnlocks, getCustomizationRequiredLevel } = require("./settings");
+      const { get } = require("./db");
+      const user = req.user;
+      const userId = user?.id || null;
+      // Use the first guild the bot is in
+      const guild = client.guilds.cache.first();
+      const guildId = guild?.id || null;
       let userLevel = 1;
+      let userXp = 0;
       let unlocks = null;
       if (guildId && userId) {
-        // Fetch user level and unlocks from DB
-        const { getCustomizationUnlocks, getCustomizationRequiredLevel } = require("./settings");
-        const { get } = require("./db");
         unlocks = await getCustomizationUnlocks(guildId);
         const row = await get(
-          `SELECT level FROM user_xp WHERE guild_id=? AND user_id=?`,
+          `SELECT level, xp FROM user_xp WHERE guild_id=? AND user_id=?`,
           [guildId, userId]
         );
         userLevel = row?.level ?? 1;
+        userXp = row?.xp ?? 0;
       } else {
-        // Fallback: use defaults
         unlocks = {
           bgimage: 10,
           gradient: 5,
@@ -353,22 +356,22 @@ function startDashboard(client) {
           avatarframe: 15
         };
       }
-
-      // Canvas setup
-      const width = 600, height = 200;
-      const canvas = createCanvas(width, height);
-      const ctx = canvas.getContext("2d");
-
-      // Helper to check if a feature is unlocked
       function isUnlocked(opt) {
         return userLevel >= (unlocks[opt] ?? 1);
       }
-
+      let prefs = userRankCardPrefs[userId] || {};
+      // Canvas size unified with Discord bot: 600x180
+      const width = 600, height = 180;
+      const canvas = createCanvas(width, height);
+      const ctx = canvas.getContext("2d");
       // Background: image > gradient > color > default, but only if unlocked
       if (prefs.bgimage && isUnlocked("bgimage")) {
         try {
-          const imgPath = path.resolve(prefs.bgimage);
-          const img = await loadImage(imgPath);
+          let imgPath = path.resolve(prefs.bgimage);
+          // Crop the image to fit the card using sharp
+          let croppedPath = imgPath + "_cropped.png";
+          await sharp(imgPath).resize(width, height, { fit: 'cover' }).toFile(croppedPath);
+          const img = await loadImage(croppedPath);
           ctx.drawImage(img, 0, 0, width, height);
         } catch (e) {
           ctx.fillStyle = prefs.bgcolor && isUnlocked("bgcolor") ? prefs.bgcolor : "#23272A";
@@ -389,7 +392,6 @@ function startDashboard(client) {
         ctx.fillStyle = prefs.bgcolor && isUnlocked("bgcolor") ? prefs.bgcolor : "#23272A";
         ctx.fillRect(0, 0, width, height);
       }
-
       // Font (only if unlocked)
       let fontFamily = "OpenSans";
       if (prefs.font && isUnlocked("font")) {
@@ -397,16 +399,49 @@ function startDashboard(client) {
         if (prefs.font === "ComicSansMS") fontFamily = "Comic Sans MS";
         if (prefs.font === "TimesNewRoman") fontFamily = "Times New Roman";
       }
+      // Draw profile pic (circle)
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(90, 90, 60, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+      try {
+        let avatarURL = user?.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=128` : null;
+        if (avatarURL) {
+          let fetchFn = (typeof fetch === 'function') ? fetch : require('node-fetch');
+          let res = await fetchFn(avatarURL);
+          if (res.ok) {
+            let avatarBuffer = typeof res.buffer === 'function' ? await res.buffer() : Buffer.from(await res.arrayBuffer());
+            const avatar = await loadImage(avatarBuffer);
+            ctx.drawImage(avatar, 30, 30, 120, 120);
+          } else {
+            throw new Error('Avatar fetch failed');
+          }
+        } else {
+          ctx.fillStyle = "#555";
+          ctx.fillRect(30, 30, 120, 120);
+          ctx.font = `bold 40px ${fontFamily}`;
+          ctx.fillStyle = "#fff";
+          ctx.fillText(user?.username ? user.username[0].toUpperCase() : "?", 80, 120);
+        }
+      } catch (e) {
+        ctx.fillStyle = "#555";
+        ctx.fillRect(30, 30, 120, 120);
+        ctx.font = `bold 40px ${fontFamily}`;
+        ctx.fillStyle = "#fff";
+        ctx.fillText(user?.username ? user.username[0].toUpperCase() : "?", 80, 120);
+      }
+      ctx.restore();
+      // Draw text
       ctx.font = `bold 28px ${fontFamily}`;
       ctx.fillStyle = "#fff";
-      ctx.fillText("Your Name", 170, 70);
+      ctx.fillText(user?.tag || "Your Name", 170, 70);
       ctx.font = `bold 22px ${fontFamily}`;
       ctx.fillStyle = "#FFD700";
       ctx.fillText(`Level: ${userLevel}`, 170, 110);
       ctx.font = `16px ${fontFamily}`;
       ctx.fillStyle = "#aaa";
-      ctx.fillText(`XP: 0 / 100`, 170, 140);
-
+      ctx.fillText(`XP: ${userXp} / ${userXp + 100}`, 170, 140);
       // Progress bar
       const barX = 170, barY = 150, barW = 380, barH = 20;
       ctx.fillStyle = "#444";
@@ -419,20 +454,6 @@ function startDashboard(client) {
       ctx.font = `bold 16px ${fontFamily}`;
       ctx.fillStyle = "#fff";
       ctx.fillText(`0 / 100 XP this level`, barX + 10, barY + 16);
-
-      // Profile pic placeholder (circle)
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(90, 100, 60, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.clip();
-      ctx.fillStyle = "#555";
-      ctx.fillRect(30, 40, 120, 120);
-      ctx.font = `bold 40px ${fontFamily}`;
-      ctx.fillStyle = "#fff";
-      ctx.fillText("U", 80, 140);
-      ctx.restore();
-
       // Output as PNG
       res.setHeader("Content-Type", "image/png");
       res.send(canvas.toBuffer());
@@ -631,10 +652,23 @@ function startDashboard(client) {
     // Save prefs in memory (replace with DB in production)
     if (!userRankCardPrefs[userId]) userRankCardPrefs[userId] = {};
     const prefs = userRankCardPrefs[userId];
+    const sharp = require('sharp');
     if (isUnlocked('bgcolor') && req.body.bgcolor) prefs.bgcolor = req.body.bgcolor;
     if (isUnlocked('gradient') && req.body.gradient) prefs.gradient = req.body.gradient;
     if (isUnlocked('font') && req.body.font) prefs.font = req.body.font;
-    if (isUnlocked('bgimage') && req.file) prefs.bgimage = req.file.path;
+    if (isUnlocked('bgimage') && req.file) {
+      // Crop/resize the uploaded image to fit the card size (600x180)
+      const croppedPath = req.file.path + '_cropped.png';
+      sharp(req.file.path).resize(600, 180, { fit: 'cover' }).toFile(croppedPath, (err) => {
+        if (!err) {
+          prefs.bgimage = croppedPath;
+        } else {
+          prefs.bgimage = req.file.path; // fallback
+        }
+        res.redirect("/lop");
+      });
+      return;
+    }
     res.redirect("/lop");
   });
 
