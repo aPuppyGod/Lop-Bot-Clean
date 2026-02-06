@@ -7,6 +7,24 @@ const upload = multer({ dest: "uploads/" });
 
 const userRankCardPrefs = {};
 
+// Discord OAuth2 setup
+const DiscordStrategy = require("passport-discord").Strategy;
+const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID;
+const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
+const DISCORD_CALLBACK_URL = process.env.DISCORD_CALLBACK_URL || "http://localhost:3000/auth/discord/callback";
+
+passport.serializeUser((user, done) => done(null, user));
+passport.deserializeUser((obj, done) => done(null, obj));
+
+passport.use(new DiscordStrategy({
+  clientID: DISCORD_CLIENT_ID,
+  clientSecret: DISCORD_CLIENT_SECRET,
+  callbackURL: DISCORD_CALLBACK_URL,
+  scope: ["identify", "guilds"]
+}, (accessToken, refreshToken, profile, done) => {
+  process.nextTick(() => done(null, profile));
+}));
+
 function htmlTemplate(content, opts = {}) {
   // opts: { user, isAdmin, active }
   const user = opts.user;
