@@ -211,7 +211,12 @@ async function cmdRank(message, args) {
   const rank = leaderboard.findIndex(r => r.user_id === user.id) + 1;
 
   // Avatar
-  const avatarUrl = user.displayAvatarURL ? user.displayAvatarURL({ format: 'png', size: 128 }) : user.avatarURL || user.defaultAvatarURL;
+  let avatarUrl;
+  try {
+    avatarUrl = user.displayAvatarURL({ format: 'png', size: 128 });
+  } catch (e) {
+    avatarUrl = user.avatarURL || user.defaultAvatarURL || null;
+  }
   const { generateRankCard } = require('./rankCard');
   const buffer = await generateRankCard({
     avatarUrl,
