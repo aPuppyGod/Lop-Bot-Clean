@@ -2,7 +2,9 @@
 const { PermissionsBitField, ChannelType, AttachmentBuilder, EmbedBuilder } = require("discord.js");
 const { get, all, run } = require("./db");
 const { levelFromXp, xpToNextLevel, totalXpForLevel } = require("./xp");
-const { createCanvas, loadImage } = require("canvas");
+const { createCanvas, loadImage, registerFont } = require("canvas");
+// Register bundled font
+registerFont(require('path').join(__dirname, '..', 'assets', 'OpenSans-Regular.ttf'), { family: 'OpenSans' });
 const { getLevelRoles } = require("./settings");
 const fs = require("fs");
 const path = require("path");
@@ -211,6 +213,7 @@ async function cmdRank(message, args) {
 
   // Profile pic
   let avatarURL = targetUser.displayAvatarURL({ format: "png", size: 128 });
+  let avatarLoaded = false;
   try {
     const avatar = await loadImage(avatarURL);
     ctx.save();
@@ -220,20 +223,33 @@ async function cmdRank(message, args) {
     ctx.clip();
     ctx.drawImage(avatar, 30, 30, 120, 120);
     ctx.restore();
+    avatarLoaded = true;
   } catch (e) {
-    // fallback: no avatar
+    // fallback: draw a circle with initials
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(90, 90, 60, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+    ctx.fillStyle = "#555";
+    ctx.fillRect(30, 30, 120, 120);
+    ctx.font = "bold 40px OpenSans";
+    ctx.fillStyle = "#fff";
+    const initials = targetUser.username ? targetUser.username[0].toUpperCase() : "?";
+    ctx.fillText(initials, 80, 120);
+    ctx.restore();
   }
 
-  // Use a basic font that works everywhere
-  ctx.font = "bold 28px sans-serif";
+  // Use bundled font
+  ctx.font = "bold 28px OpenSans";
   ctx.fillStyle = "#fff";
   ctx.fillText(targetUser.tag, 170, 70);
 
-  ctx.font = "bold 22px sans-serif";
+  ctx.font = "bold 22px OpenSans";
   ctx.fillStyle = "#FFD700";
   ctx.fillText(`Level: ${level}`, 170, 110);
 
-  ctx.font = "16px sans-serif";
+  ctx.font = "16px OpenSans";
   ctx.fillStyle = "#aaa";
   ctx.fillText(`XP: ${xp} / ${xpNext} (+${xpToNext} to next)`, 170, 140);
 
@@ -249,7 +265,7 @@ async function cmdRank(message, args) {
   ctx.strokeRect(barX, barY, barW, barH);
 
   // Progress bar text
-  ctx.font = "bold 16px sans-serif";
+  ctx.font = "bold 16px OpenSans";
   ctx.fillStyle = "#fff";
   ctx.fillText(`${xpIntoLevel} / ${xpToNextLevel(level)} XP this level`, barX + 10, barY + 16);
 
