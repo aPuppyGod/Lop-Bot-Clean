@@ -214,49 +214,55 @@ async function cmdRank(message, args) {
   // Profile pic
   let avatarLoaded = false;
   // Always use PNG for Discord avatars (supported by node-canvas)
+  const sharp = require('sharp');
   let avatarURL = targetUser.displayAvatarURL({ format: "png", size: 128, dynamic: false });
   console.log("Rank card avatar URL:", avatarURL);
-  // Only load if .png, otherwise try default avatar, then fallback to initials
-  if (!avatarURL.endsWith('.png')) {
+  // Accept any avatar type, convert to PNG if needed
+  try {
+    let avatarBuffer = null;
+    let fetchFn = (typeof fetch === 'function') ? fetch : require('node-fetch');
+    let res = await fetchFn(avatarURL);
+    if (res.ok) {
+      let contentType = res.headers.get ? res.headers.get('content-type') : '';
+      if (contentType.includes('image/png') || avatarURL.endsWith('.png')) {
+        avatarBuffer = typeof res.buffer === 'function' ? await res.buffer() : Buffer.from(await res.arrayBuffer());
+      } else {
+        // Convert unsupported types to PNG
+        let rawBuffer = typeof res.buffer === 'function' ? await res.buffer() : Buffer.from(await res.arrayBuffer());
+        avatarBuffer = await sharp(rawBuffer).png().toBuffer();
+      }
+      const avatar = await loadImage(avatarBuffer);
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(90, 90, 60, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+      ctx.drawImage(avatar, 30, 30, 120, 120);
+      ctx.restore();
+    } else {
+      throw new Error('Avatar fetch failed');
+    }
+  } catch (e1) {
     // Try default avatar (always PNG)
     let defaultAvatarURL = targetUser.defaultAvatarURL;
     console.log("Rank card default avatar URL:", defaultAvatarURL);
     try {
-      const avatar = await loadImage(defaultAvatarURL);
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(90, 90, 60, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.clip();
-      ctx.drawImage(avatar, 30, 30, 120, 120);
-      ctx.restore();
-    } catch (e1) {
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(90, 90, 60, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.clip();
-      ctx.fillStyle = "#555";
-      ctx.fillRect(30, 30, 120, 120);
-      ctx.font = "bold 40px OpenSans";
-      ctx.fillStyle = "#fff";
-      const initials = targetUser.username ? targetUser.username[0].toUpperCase() : "?";
-      ctx.fillText(initials, 80, 120);
-      ctx.restore();
-      console.error("Default avatar load failed for user:", targetUser.tag, e1);
-    }
-  } else {
-    try {
-      const avatar = await loadImage(avatarURL);
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(90, 90, 60, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.clip();
-      ctx.drawImage(avatar, 30, 30, 120, 120);
-      ctx.restore();
-      avatarLoaded = true;
-    } catch (e1) {
+      let fetchFn = (typeof fetch === 'function') ? fetch : require('node-fetch');
+      let res = await fetchFn(defaultAvatarURL);
+      if (res.ok) {
+        let avatarBuffer = typeof res.buffer === 'function' ? await res.buffer() : Buffer.from(await res.arrayBuffer());
+        const avatar = await loadImage(avatarBuffer);
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(90, 90, 60, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(avatar, 30, 30, 120, 120);
+        ctx.restore();
+      } else {
+        throw new Error('Default avatar fetch failed');
+      }
+    } catch (e2) {
       ctx.save();
       ctx.beginPath();
       ctx.arc(90, 90, 60, 0, Math.PI * 2);
@@ -269,7 +275,7 @@ async function cmdRank(message, args) {
       const initials = targetUser.username ? targetUser.username[0].toUpperCase() : "?";
       ctx.fillText(initials, 80, 120);
       ctx.restore();
-      console.error("Avatar load failed for user:", targetUser.tag, e1);
+      console.error("Default avatar load failed for user:", targetUser.tag, e1, e2);
     }
   }
   // Calculate leaderboard rank
