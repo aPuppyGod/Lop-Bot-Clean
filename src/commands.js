@@ -243,12 +243,16 @@ async function cmdRank(message, args) {
       ctx.restore();
       avatarLoaded = true;
     } catch (e1) {
-      // Try direct fetch and buffer
+      // Try direct fetch and buffer, using global fetch if available
       try {
-        const fetch = require('node-fetch');
-        const res = await fetch(avatarURL);
+        let fetchFn = (typeof fetch === 'function') ? fetch : null;
+        if (!fetchFn) {
+          fetchFn = require('node-fetch');
+        }
+        const res = await fetchFn(avatarURL);
+        console.log("Avatar fetch status:", res.status, res.headers ? res.headers.get('content-type') : '');
         if (res.ok) {
-          const buffer = await res.buffer();
+          const buffer = typeof res.buffer === 'function' ? await res.buffer() : Buffer.from(await res.arrayBuffer());
           const avatar = await loadImage(buffer);
           ctx.save();
           ctx.beginPath();
