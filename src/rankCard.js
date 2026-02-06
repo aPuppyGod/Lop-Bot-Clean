@@ -45,12 +45,22 @@ async function generateRankCard({
   ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
   ctx.closePath();
   ctx.clip();
+  let avatarImg;
   try {
-    const avatarImg = await loadImage(avatarUrl);
-    ctx.drawImage(avatarImg, avatarX, avatarY, avatarSize, avatarSize);
-  } catch {
+    if (avatarUrl) {
+      avatarImg = await loadImage(avatarUrl);
+      ctx.drawImage(avatarImg, avatarX, avatarY, avatarSize, avatarSize);
+    } else {
+      throw new Error('No avatarUrl');
+    }
+  } catch (err) {
     ctx.fillStyle = '#444';
     ctx.fillRect(avatarX, avatarY, avatarSize, avatarSize);
+    // Draw fallback text
+    ctx.font = 'bold 18px Sans-serif';
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.fillText('?', avatarX + avatarSize / 2, avatarY + avatarSize / 2 + 8);
   }
   ctx.restore();
 
@@ -65,7 +75,8 @@ async function generateRankCard({
   // Username
   ctx.font = usernameFont;
   ctx.fillStyle = text;
-  let uname = username;
+  ctx.textAlign = 'left';
+  let uname = username || 'Unknown';
   if (ctx.measureText(uname).width > 180) {
     while (ctx.measureText(uname + '...').width > 180 && uname.length > 0) {
       uname = uname.slice(0, -1);
@@ -80,7 +91,7 @@ async function generateRankCard({
   const barW = 200;
   const barH = 18;
   const radius = barH / 2;
-  const progress = Math.max(0, Math.min(1, currentXP / xpToNextLevel));
+  const progress = xpToNextLevel > 0 ? Math.max(0, Math.min(1, currentXP / xpToNextLevel)) : 0;
 
   // Bar background
   ctx.save();
@@ -126,7 +137,7 @@ async function generateRankCard({
   ctx.fillText('RANK', width - 22, avatarY + 22);
   ctx.font = rankFont;
   ctx.fillStyle = text;
-  ctx.fillText(`#${rank}`, width - 22, avatarY + 38);
+  ctx.fillText(`#${rank || '?'}`, width - 22, avatarY + 38);
 
   // Level
   ctx.font = levelLabelFont;
@@ -134,7 +145,7 @@ async function generateRankCard({
   ctx.fillText('LEVEL', width - 22, avatarY + avatarSize - 22);
   ctx.font = levelFont;
   ctx.fillStyle = highlight;
-  ctx.fillText(`${level}`, width - 22, avatarY + avatarSize - 2);
+  ctx.fillText(`${level || '?'}`, width - 22, avatarY + avatarSize - 2);
 
   ctx.textAlign = 'left';
 
