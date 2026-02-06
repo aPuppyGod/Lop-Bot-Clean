@@ -589,15 +589,47 @@ function startDashboard(client) {
     if (user) {
       formHtml = `
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" />
+      <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700|Open+Sans:400,700|Arial|Comic+Sans+MS|Times+New+Roman|Roboto|Lobster|Pacifico|Oswald|Raleway|Bebas+Neue|Merriweather|Nunito|Poppins|Quicksand|Source+Code+Pro|Caveat|Indie+Flower|Fira+Sans|Lato|Playfair+Display|Abril+Fatface|Anton|Bangers|Dancing+Script|Permanent+Marker|PT+Serif|Rubik|Satisfy|Teko|Varela+Round|Zilla+Slab&display=swap" rel="stylesheet">
       <form id="customizeForm" method="post" action="/lop/customize" enctype="multipart/form-data">
         <div style="display:flex;flex-wrap:wrap;gap:18px;">
           <div><label>Background Color:<br><input type="color" name="bgcolor" value="${prefs.bgcolor || '#23272A'}" ${!isUnlocked('bgcolor') ? 'disabled' : ''}></label></div>
-          <div><label>Gradient (comma colors):<br><input type="text" name="gradient" value="${prefs.gradient || ''}" placeholder="#23272A,#FFD700" ${!isUnlocked('gradient') ? 'disabled' : ''}></label></div>
-          <div><label>Font:<br><select name="font" ${!isUnlocked('font') ? 'disabled' : ''}>
-            <option value="OpenSans"${prefs.font==='OpenSans'?' selected':''}>Open Sans</option>
-            <option value="Arial"${prefs.font==='Arial'?' selected':''}>Arial</option>
-            <option value="ComicSansMS"${prefs.font==='ComicSansMS'?' selected':''}>Comic Sans MS</option>
-            <option value="TimesNewRoman"${prefs.font==='TimesNewRoman'?' selected':''}>Times New Roman</option>
+          <div><label>Gradient:<br>
+            <input type="color" id="gradColor1" value="${prefs.gradient?.split(',')[0] || '#23272A'}" ${!isUnlocked('gradient') ? 'disabled' : ''}>
+            <input type="color" id="gradColor2" value="${prefs.gradient?.split(',')[1] || '#FFD700'}" ${!isUnlocked('gradient') ? 'disabled' : ''}>
+            <input type="text" name="gradient" id="gradientInput" value="${prefs.gradient || ''}" placeholder="#23272A,#FFD700" ${!isUnlocked('gradient') ? 'disabled' : ''} style="margin-left:8px;width:120px;">
+          </label></div>
+          <div><label>Font:<br><select name="font" id="fontSelect" ${!isUnlocked('font') ? 'disabled' : ''}>
+            <option value="OpenSans" style="font-family:'Open Sans',sans-serif;"${prefs.font==='OpenSans'?' selected':''}>Open Sans</option>
+            <option value="Arial" style="font-family:Arial;"${prefs.font==='Arial'?' selected':''}>Arial</option>
+            <option value="ComicSansMS" style="font-family:'Comic Sans MS',cursive;"${prefs.font==='ComicSansMS'?' selected':''}>Comic Sans MS</option>
+            <option value="TimesNewRoman" style="font-family:'Times New Roman',serif;"${prefs.font==='TimesNewRoman'?' selected':''}>Times New Roman</option>
+            <option value="Roboto" style="font-family:'Roboto',sans-serif;"${prefs.font==='Roboto'?' selected':''}>Roboto</option>
+            <option value="Lobster" style="font-family:'Lobster',cursive;"${prefs.font==='Lobster'?' selected':''}>Lobster</option>
+            <option value="Pacifico" style="font-family:'Pacifico',cursive;"${prefs.font==='Pacifico'?' selected':''}>Pacifico</option>
+            <option value="Oswald" style="font-family:'Oswald',sans-serif;"${prefs.font==='Oswald'?' selected':''}>Oswald</option>
+            <option value="Raleway" style="font-family:'Raleway',sans-serif;"${prefs.font==='Raleway'?' selected':''}>Raleway</option>
+            <option value="BebasNeue" style="font-family:'Bebas Neue',sans-serif;"${prefs.font==='BebasNeue'?' selected':''}>Bebas Neue</option>
+            <option value="Merriweather" style="font-family:'Merriweather',serif;"${prefs.font==='Merriweather'?' selected':''}>Merriweather</option>
+            <option value="Nunito" style="font-family:'Nunito',sans-serif;"${prefs.font==='Nunito'?' selected':''}>Nunito</option>
+            <option value="Poppins" style="font-family:'Poppins',sans-serif;"${prefs.font==='Poppins'?' selected':''}>Poppins</option>
+            <option value="Quicksand" style="font-family:'Quicksand',sans-serif;"${prefs.font==='Quicksand'?' selected':''}>Quicksand</option>
+            <option value="SourceCodePro" style="font-family:'Source Code Pro',monospace;"${prefs.font==='SourceCodePro'?' selected':''}>Source Code Pro</option>
+            <option value="Caveat" style="font-family:'Caveat',cursive;"${prefs.font==='Caveat'?' selected':''}>Caveat</option>
+            <option value="IndieFlower" style="font-family:'Indie Flower',cursive;"${prefs.font==='IndieFlower'?' selected':''}>Indie Flower</option>
+            <option value="FiraSans" style="font-family:'Fira Sans',sans-serif;"${prefs.font==='FiraSans'?' selected':''}>Fira Sans</option>
+            <option value="Lato" style="font-family:'Lato',sans-serif;"${prefs.font==='Lato'?' selected':''}>Lato</option>
+            <option value="PlayfairDisplay" style="font-family:'Playfair Display',serif;"${prefs.font==='PlayfairDisplay'?' selected':''}>Playfair Display</option>
+            <option value="AbrilFatface" style="font-family:'Abril Fatface',cursive;"${prefs.font==='AbrilFatface'?' selected':''}>Abril Fatface</option>
+            <option value="Anton" style="font-family:'Anton',sans-serif;"${prefs.font==='Anton'?' selected':''}>Anton</option>
+            <option value="Bangers" style="font-family:'Bangers',cursive;"${prefs.font==='Bangers'?' selected':''}>Bangers</option>
+            <option value="DancingScript" style="font-family:'Dancing Script',cursive;"${prefs.font==='DancingScript'?' selected':''}>Dancing Script</option>
+            <option value="PermanentMarker" style="font-family:'Permanent Marker',cursive;"${prefs.font==='PermanentMarker'?' selected':''}>Permanent Marker</option>
+            <option value="PTSerif" style="font-family:'PT Serif',serif;"${prefs.font==='PTSerif'?' selected':''}>PT Serif</option>
+            <option value="Rubik" style="font-family:'Rubik',sans-serif;"${prefs.font==='Rubik'?' selected':''}>Rubik</option>
+            <option value="Satisfy" style="font-family:'Satisfy',cursive;"${prefs.font==='Satisfy'?' selected':''}>Satisfy</option>
+            <option value="Teko" style="font-family:'Teko',sans-serif;"${prefs.font==='Teko'?' selected':''}>Teko</option>
+            <option value="VarelaRound" style="font-family:'Varela Round',sans-serif;"${prefs.font==='VarelaRound'?' selected':''}>Varela Round</option>
+            <option value="ZillaSlab" style="font-family:'Zilla Slab',serif;"${prefs.font==='ZillaSlab'?' selected':''}>Zilla Slab</option>
           </select></label></div>
           <div>
             <label>Background Image:<br>
@@ -617,6 +649,26 @@ function startDashboard(client) {
       <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
       <script>
         let cropper;
+        // Gradient color pickers update hex input
+        document.getElementById('gradColor1').addEventListener('input', function() {
+          const c1 = this.value;
+          const c2 = document.getElementById('gradColor2').value;
+          document.getElementById('gradientInput').value = c1 + ',' + c2;
+        });
+        document.getElementById('gradColor2').addEventListener('input', function() {
+          const c1 = document.getElementById('gradColor1').value;
+          const c2 = this.value;
+          document.getElementById('gradientInput').value = c1 + ',' + c2;
+        });
+        document.getElementById('gradientInput').addEventListener('input', function() {
+          const parts = this.value.split(',');
+          if (parts[0]) document.getElementById('gradColor1').value = parts[0];
+          if (parts[1]) document.getElementById('gradColor2').value = parts[1];
+        });
+        // Font preview
+        document.getElementById('fontSelect').addEventListener('change', function() {
+          this.style.fontFamily = this.options[this.selectedIndex].style.fontFamily;
+        });
         document.getElementById('bgimageInput').addEventListener('change', function(e) {
           const file = e.target.files[0];
           if (!file) return;
@@ -709,11 +761,7 @@ function startDashboard(client) {
         .extract({ left: cropX, top: cropY, width: cropW, height: cropH })
         .resize(600, 180, { fit: 'cover' })
         .toFile(croppedPath, (err) => {
-          if (!err) {
-            prefs.bgimage = croppedPath;
-          } else {
-            prefs.bgimage = req.file.path; // fallback
-          }
+          prefs.bgimage = !err ? croppedPath : req.file.path;
           res.redirect("/lop");
         });
       return;
