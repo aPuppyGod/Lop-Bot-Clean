@@ -183,7 +183,7 @@ function startDashboard(client) {
       res.setHeader("Content-Type", "image/png");
       res.send(canvas.toBuffer());
     });
-  const app = express();
+  // (removed duplicate app = express())
 
   // Render sets PORT; local uses DASHBOARD_PORT or 3000
   const port = parseInt(process.env.PORT || process.env.DASHBOARD_PORT || "3000", 10);
