@@ -391,9 +391,41 @@ function startDashboard(client) {
       // Font (only if unlocked)
       let fontFamily = "OpenSans";
       if (prefs.font && isUnlocked("font")) {
-        if (prefs.font === "Arial") fontFamily = "Arial";
-        if (prefs.font === "ComicSansMS") fontFamily = "Comic Sans MS";
-        if (prefs.font === "TimesNewRoman") fontFamily = "Times New Roman";
+        const fontMap = {
+          OpenSans: "'Open Sans',sans-serif",
+          Arial: "Arial,sans-serif",
+          ComicSansMS: "'Comic Sans MS',cursive",
+          TimesNewRoman: "'Times New Roman',serif",
+          Roboto: "'Roboto',sans-serif",
+          Lobster: "'Lobster',cursive",
+          Pacifico: "'Pacifico',cursive",
+          Oswald: "'Oswald',sans-serif",
+          Raleway: "'Raleway',sans-serif",
+          BebasNeue: "'Bebas Neue',sans-serif",
+          Merriweather: "'Merriweather',serif",
+          Nunito: "'Nunito',sans-serif",
+          Poppins: "'Poppins',sans-serif",
+          Quicksand: "'Quicksand',sans-serif",
+          SourceCodePro: "'Source Code Pro',monospace",
+          Caveat: "'Caveat',cursive",
+          IndieFlower: "'Indie Flower',cursive",
+          FiraSans: "'Fira Sans',sans-serif",
+          Lato: "'Lato',sans-serif",
+          PlayfairDisplay: "'Playfair Display',serif",
+          AbrilFatface: "'Abril Fatface',cursive",
+          Anton: "'Anton',sans-serif",
+          Bangers: "'Bangers',cursive",
+          DancingScript: "'Dancing Script',cursive",
+          PermanentMarker: "'Permanent Marker',cursive",
+          PTSerif: "'PT Serif',serif",
+          Rubik: "'Rubik',sans-serif",
+          Satisfy: "'Satisfy',cursive",
+          Teko: "'Teko',sans-serif",
+          VarelaRound: "'Varela Round',sans-serif",
+          ZillaSlab: "'Zilla Slab',serif"
+        };
+        fontFamily = fontMap[prefs.font] || "'Open Sans',sans-serif";
+      }
       }
       // Draw profile pic (circle)
       ctx.save();
