@@ -216,21 +216,35 @@ async function cmdRank(message, args) {
   // Always use PNG for Discord avatars (supported by node-canvas)
   let avatarURL = targetUser.displayAvatarURL({ format: "png", size: 128, dynamic: false });
   console.log("Rank card avatar URL:", avatarURL);
-  // Only load if .png, otherwise fallback to initials
+  // Only load if .png, otherwise try default avatar, then fallback to initials
   if (!avatarURL.endsWith('.png')) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(90, 90, 60, 0, Math.PI * 2);
-    ctx.closePath();
-    ctx.clip();
-    ctx.fillStyle = "#555";
-    ctx.fillRect(30, 30, 120, 120);
-    ctx.font = "bold 40px OpenSans";
-    ctx.fillStyle = "#fff";
-    const initials = targetUser.username ? targetUser.username[0].toUpperCase() : "?";
-    ctx.fillText(initials, 80, 120);
-    ctx.restore();
-    console.error("Avatar is not PNG, fallback to initials for user:", targetUser.tag);
+    // Try default avatar (always PNG)
+    let defaultAvatarURL = targetUser.defaultAvatarURL;
+    console.log("Rank card default avatar URL:", defaultAvatarURL);
+    try {
+      const avatar = await loadImage(defaultAvatarURL);
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(90, 90, 60, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+      ctx.drawImage(avatar, 30, 30, 120, 120);
+      ctx.restore();
+    } catch (e1) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(90, 90, 60, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+      ctx.fillStyle = "#555";
+      ctx.fillRect(30, 30, 120, 120);
+      ctx.font = "bold 40px OpenSans";
+      ctx.fillStyle = "#fff";
+      const initials = targetUser.username ? targetUser.username[0].toUpperCase() : "?";
+      ctx.fillText(initials, 80, 120);
+      ctx.restore();
+      console.error("Default avatar load failed for user:", targetUser.tag, e1);
+    }
   } else {
     try {
       const avatar = await loadImage(avatarURL);
@@ -243,7 +257,6 @@ async function cmdRank(message, args) {
       ctx.restore();
       avatarLoaded = true;
     } catch (e1) {
-      // fallback: draw a circle with initials
       ctx.save();
       ctx.beginPath();
       ctx.arc(90, 90, 60, 0, Math.PI * 2);
