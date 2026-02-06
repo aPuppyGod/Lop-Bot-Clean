@@ -1,3 +1,189 @@
+const { createCanvas, loadImage, registerFont } = require("canvas");
+const sharp = require("sharp");
+const path = require("path");
+// Serve the user's customized rank card as an image
+app.get("/lop/rankcard/image", async (req, res) => {
+  const userKey = req.ip;
+  const prefs = userRankCardPrefs[userKey] || {};
+  // Canvas setup
+  const width = 600, height = 200;
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext("2d");
+
+  // Background: image > gradient > color > default
+  if (prefs.bgimage) {
+    try {
+      const imgPath = path.resolve(prefs.bgimage);
+      const img = await loadImage(imgPath);
+      ctx.drawImage(img, 0, 0, width, height);
+    } catch (e) {
+      ctx.fillStyle = prefs.bgcolor || "#23272A";
+      ctx.fillRect(0, 0, width, height);
+    }
+  } else if (prefs.gradient) {
+    const colors = prefs.gradient.split(",").map(s => s.trim()).filter(Boolean);
+    if (colors.length > 1) {
+      const grad = ctx.createLinearGradient(0, 0, width, height);
+      colors.forEach((c, i) => grad.addColorStop(i / (colors.length - 1), c));
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, width, height);
+    } else {
+      ctx.fillStyle = prefs.bgcolor || "#23272A";
+      ctx.fillRect(0, 0, width, height);
+    }
+  } else {
+    ctx.fillStyle = prefs.bgcolor || "#23272A";
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  // Font
+  let fontFamily = "OpenSans";
+  if (prefs.font === "Arial") fontFamily = "Arial";
+  if (prefs.font === "ComicSansMS") fontFamily = "Comic Sans MS";
+  if (prefs.font === "TimesNewRoman") fontFamily = "Times New Roman";
+  ctx.font = `bold 28px ${fontFamily}`;
+  ctx.fillStyle = "#fff";
+  ctx.fillText("Your Name", 170, 70);
+  ctx.font = `bold 22px ${fontFamily}`;
+  ctx.fillStyle = "#FFD700";
+  ctx.fillText(`Level: 1`, 170, 110);
+  ctx.font = `16px ${fontFamily}`;
+  ctx.fillStyle = "#aaa";
+  ctx.fillText(`XP: 0 / 100`, 170, 140);
+
+  // Progress bar
+  const barX = 170, barY = 150, barW = 380, barH = 20;
+  ctx.fillStyle = "#444";
+  ctx.fillRect(barX, barY, barW, barH);
+  ctx.fillStyle = "#43B581";
+  ctx.fillRect(barX, barY, barW * 0.1, barH);
+  ctx.strokeStyle = "#222";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(barX, barY, barW, barH);
+  ctx.font = `bold 16px ${fontFamily}`;
+  ctx.fillStyle = "#fff";
+  ctx.fillText(`0 / 100 XP this level`, barX + 10, barY + 16);
+
+  // Profile pic placeholder (circle)
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(90, 100, 60, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.clip();
+  ctx.fillStyle = "#555";
+  ctx.fillRect(30, 40, 120, 120);
+  ctx.font = `bold 40px ${fontFamily}`;
+  ctx.fillStyle = "#fff";
+  ctx.fillText("U", 80, 140);
+  ctx.restore();
+
+  // Output as PNG
+  res.setHeader("Content-Type", "image/png");
+  res.send(canvas.toBuffer());
+});
+const multer = require("multer");
+const upload = multer({ dest: "uploads/" });
+// In-memory store for user customizations (replace with DB in production)
+const userRankCardPrefs = {};
+// Handle rank card customization POST (save settings)
+app.post("/lop/rankcard/customize", upload.single("bgimage"), async (req, res) => {
+  // For demo: use IP as user key (replace with real user ID if you add auth)
+  const userKey = req.ip;
+  const { bgcolor, gradient, font } = req.body;
+  let bgimage = null;
+  if (req.file) {
+    bgimage = req.file.path;
+  }
+  userRankCardPrefs[userKey] = { bgcolor, gradient, font, bgimage };
+  res.send(htmlTemplate(`
+    <h2>Rank Card Customization Saved!</h2>
+    <div><a href="/lop">Back to Leaderboard</a> | <a href="/lop/rankcard">View Rank Card</a></div>
+    <pre>${JSON.stringify(userRankCardPrefs[userKey], null, 2)}</pre>
+    <div style="margin-top:32px;text-align:center;color:#aaa;font-size:12px;">
+      <a href="/admin">Admin Login</a> (for server managers only)
+    </div>
+  `));
+});
+// ─────────────────────────────────────────────
+// Public Lop-Bot page: leaderboard + rank card customization
+// ─────────────────────────────────────────────
+app.get("/lop", async (req, res) => {
+  // Fetch leaderboard (top 10)
+  const guild = client.guilds.cache.first();
+  let leaderboard = [];
+  if (guild) {
+    leaderboard = await require("./db").all(
+      `SELECT user_id, xp, level FROM user_xp WHERE guild_id=? ORDER BY xp DESC LIMIT 10`,
+      [guild.id]
+    );
+  }
+
+  // Simple HTML UI scaffold
+  res.send(htmlTemplate(`
+    <h2>Lop-Bot Leaderboard</h2>
+    <div style="margin-bottom:24px">
+      <a href="/lop">Leaderboard</a> |
+      <a href="/lop/rankcard">Your Rank Card</a> |
+      <a href="/admin">Admin</a>
+    </div>
+    <table style="width:100%;max-width:600px;margin:auto;border-collapse:collapse;">
+      <tr style="background:#eee;"><th>Rank</th><th>User</th><th>Level</th><th>XP</th></tr>
+      ${leaderboard.map((r, i) => `
+        <tr style="background:${i%2?'#f9f9f9':'#fff'};">
+          <td style="text-align:center;">#${i+1}</td>
+          <td><span id="user-${r.user_id}">${r.user_id}</span></td>
+          <td style="text-align:center;">${r.level}</td>
+          <td style="text-align:center;">${r.xp}</td>
+        </tr>
+      `).join("")}
+    </table>
+    <div style="margin-top:32px;text-align:center;color:#888;font-size:14px;">
+      <b>Customize your rank card:</b> <a href="/lop/rankcard">View & Customize</a>
+    </div>
+    <div style="margin-top:32px;text-align:center;color:#aaa;font-size:12px;">
+      <b>Note:</b> This page does not show admin settings.<br>
+      <a href="/admin">Admin Login</a> (for server managers only)
+    </div>
+  `));
+});
+
+// Rank card view/customization page (UI scaffold)
+app.get("/lop/rankcard", async (req, res) => {
+  // For demo: use IP as user key (replace with real user ID if you add auth)
+  const userKey = req.ip;
+  const prefs = userRankCardPrefs[userKey] || {};
+  res.send(htmlTemplate(`
+    <h2>Your Lop-Bot Rank Card</h2>
+    <div style="margin-bottom:24px">
+      <a href="/lop">Leaderboard</a> |
+      <a href="/lop/rankcard">Your Rank Card</a> |
+      <a href="/admin">Admin</a>
+    </div>
+    <div style="max-width:600px;margin:auto;">
+      <img src="/lop/rankcard/image" alt="Rank Card Preview" style="width:100%;max-width:500px;border-radius:16px;box-shadow:0 2px 12px #0002;" />
+      <form method="post" action="/lop/rankcard/customize" enctype="multipart/form-data" style="margin-top:24px;">
+        <label>Background Color: <input type="color" name="bgcolor" value="${prefs.bgcolor || '#23272A'}" /></label><br><br>
+        <label>Gradient Colors: <input type="text" name="gradient" value="${prefs.gradient || ''}" placeholder="e.g. #23272A,#43B581" /></label><br><br>
+        <label>Background Image: <input type="file" name="bgimage" accept="image/*" /></label><br><br>
+        <label>Font: <select name="font">
+          <option value="OpenSans" ${prefs.font === 'OpenSans' ? 'selected' : ''}>Open Sans</option>
+          <option value="Arial" ${prefs.font === 'Arial' ? 'selected' : ''}>Arial</option>
+          <option value="ComicSansMS" ${prefs.font === 'ComicSansMS' ? 'selected' : ''}>Comic Sans MS</option>
+          <option value="TimesNewRoman" ${prefs.font === 'TimesNewRoman' ? 'selected' : ''}>Times New Roman</option>
+        </select></label><br><br>
+        <button type="submit">Save Customization</button>
+      </form>
+      <div style="margin-top:24px;">
+        <b>Your saved customization:</b>
+        <pre>${JSON.stringify(prefs, null, 2)}</pre>
+      </div>
+    </div>
+    <div style="margin-top:32px;text-align:center;color:#aaa;font-size:12px;">
+      <b>Note:</b> This page does not show admin settings.<br>
+      <a href="/admin">Admin Login</a> (for server managers only)
+    </div>
+  `));
+});
 // src/dashboard.js
 const express = require("express");
 const session = require("express-session");
@@ -167,6 +353,11 @@ function startDashboard(client) {
   // ─────────────────────────────────────────────
   // Home: list guilds
   // ─────────────────────────────────────────────
+  app.get("/admin", (req, res) => {
+    if (!req.session || !req.session.ok) return res.redirect("/login");
+    return res.redirect("/");
+  });
+
   app.get("/", mustBeLoggedIn, async (_req, res) => {
     const guilds = client.guilds.cache
       .map((g) => ({ id: g.id, name: g.name }))
