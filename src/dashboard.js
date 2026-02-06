@@ -1,86 +1,6 @@
 const { createCanvas, loadImage, registerFont } = require("canvas");
 const sharp = require("sharp");
 const path = require("path");
-// Serve the user's customized rank card as an image
-app.get("/lop/rankcard/image", async (req, res) => {
-  const userKey = req.ip;
-  const prefs = userRankCardPrefs[userKey] || {};
-  // Canvas setup
-  const width = 600, height = 200;
-  const canvas = createCanvas(width, height);
-  const ctx = canvas.getContext("2d");
-
-  // Background: image > gradient > color > default
-  if (prefs.bgimage) {
-    try {
-      const imgPath = path.resolve(prefs.bgimage);
-      const img = await loadImage(imgPath);
-      ctx.drawImage(img, 0, 0, width, height);
-    } catch (e) {
-      ctx.fillStyle = prefs.bgcolor || "#23272A";
-      ctx.fillRect(0, 0, width, height);
-    }
-  } else if (prefs.gradient) {
-    const colors = prefs.gradient.split(",").map(s => s.trim()).filter(Boolean);
-    if (colors.length > 1) {
-      const grad = ctx.createLinearGradient(0, 0, width, height);
-      colors.forEach((c, i) => grad.addColorStop(i / (colors.length - 1), c));
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, width, height);
-    } else {
-      ctx.fillStyle = prefs.bgcolor || "#23272A";
-      ctx.fillRect(0, 0, width, height);
-    }
-  } else {
-    ctx.fillStyle = prefs.bgcolor || "#23272A";
-    ctx.fillRect(0, 0, width, height);
-  }
-
-  // Font
-  let fontFamily = "OpenSans";
-  if (prefs.font === "Arial") fontFamily = "Arial";
-  if (prefs.font === "ComicSansMS") fontFamily = "Comic Sans MS";
-  if (prefs.font === "TimesNewRoman") fontFamily = "Times New Roman";
-  ctx.font = `bold 28px ${fontFamily}`;
-  ctx.fillStyle = "#fff";
-  ctx.fillText("Your Name", 170, 70);
-  ctx.font = `bold 22px ${fontFamily}`;
-  ctx.fillStyle = "#FFD700";
-  ctx.fillText(`Level: 1`, 170, 110);
-  ctx.font = `16px ${fontFamily}`;
-  ctx.fillStyle = "#aaa";
-  ctx.fillText(`XP: 0 / 100`, 170, 140);
-
-  // Progress bar
-  const barX = 170, barY = 150, barW = 380, barH = 20;
-  ctx.fillStyle = "#444";
-  ctx.fillRect(barX, barY, barW, barH);
-  ctx.fillStyle = "#43B581";
-  ctx.fillRect(barX, barY, barW * 0.1, barH);
-  ctx.strokeStyle = "#222";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(barX, barY, barW, barH);
-  ctx.font = `bold 16px ${fontFamily}`;
-  ctx.fillStyle = "#fff";
-  ctx.fillText(`0 / 100 XP this level`, barX + 10, barY + 16);
-
-  // Profile pic placeholder (circle)
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(90, 100, 60, 0, Math.PI * 2);
-  ctx.closePath();
-  ctx.clip();
-  ctx.fillStyle = "#555";
-  ctx.fillRect(30, 40, 120, 120);
-  ctx.font = `bold 40px ${fontFamily}`;
-  ctx.fillStyle = "#fff";
-  ctx.fillText("U", 80, 140);
-  ctx.restore();
-
-  // Output as PNG
-  res.setHeader("Content-Type", "image/png");
-  res.send(canvas.toBuffer());
-});
 const multer = require("multer");
 const upload = multer({ dest: "uploads/" });
 // In-memory store for user customizations (replace with DB in production)
@@ -285,6 +205,86 @@ function isTextChannelLike(ch) {
 }
 
 function startDashboard(client) {
+    // Serve the user's customized rank card as an image
+    app.get("/lop/rankcard/image", async (req, res) => {
+      const userKey = req.ip;
+      const prefs = userRankCardPrefs[userKey] || {};
+      // Canvas setup
+      const width = 600, height = 200;
+      const canvas = createCanvas(width, height);
+      const ctx = canvas.getContext("2d");
+
+      // Background: image > gradient > color > default
+      if (prefs.bgimage) {
+        try {
+          const imgPath = path.resolve(prefs.bgimage);
+          const img = await loadImage(imgPath);
+          ctx.drawImage(img, 0, 0, width, height);
+        } catch (e) {
+          ctx.fillStyle = prefs.bgcolor || "#23272A";
+          ctx.fillRect(0, 0, width, height);
+        }
+      } else if (prefs.gradient) {
+        const colors = prefs.gradient.split(",").map(s => s.trim()).filter(Boolean);
+        if (colors.length > 1) {
+          const grad = ctx.createLinearGradient(0, 0, width, height);
+          colors.forEach((c, i) => grad.addColorStop(i / (colors.length - 1), c));
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, width, height);
+        } else {
+          ctx.fillStyle = prefs.bgcolor || "#23272A";
+          ctx.fillRect(0, 0, width, height);
+        }
+      } else {
+        ctx.fillStyle = prefs.bgcolor || "#23272A";
+        ctx.fillRect(0, 0, width, height);
+      }
+
+      // Font
+      let fontFamily = "OpenSans";
+      if (prefs.font === "Arial") fontFamily = "Arial";
+      if (prefs.font === "ComicSansMS") fontFamily = "Comic Sans MS";
+      if (prefs.font === "TimesNewRoman") fontFamily = "Times New Roman";
+      ctx.font = `bold 28px ${fontFamily}`;
+      ctx.fillStyle = "#fff";
+      ctx.fillText("Your Name", 170, 70);
+      ctx.font = `bold 22px ${fontFamily}`;
+      ctx.fillStyle = "#FFD700";
+      ctx.fillText(`Level: 1`, 170, 110);
+      ctx.font = `16px ${fontFamily}`;
+      ctx.fillStyle = "#aaa";
+      ctx.fillText(`XP: 0 / 100`, 170, 140);
+
+      // Progress bar
+      const barX = 170, barY = 150, barW = 380, barH = 20;
+      ctx.fillStyle = "#444";
+      ctx.fillRect(barX, barY, barW, barH);
+      ctx.fillStyle = "#43B581";
+      ctx.fillRect(barX, barY, barW * 0.1, barH);
+      ctx.strokeStyle = "#222";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(barX, barY, barW, barH);
+      ctx.font = `bold 16px ${fontFamily}`;
+      ctx.fillStyle = "#fff";
+      ctx.fillText(`0 / 100 XP this level`, barX + 10, barY + 16);
+
+      // Profile pic placeholder (circle)
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(90, 100, 60, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+      ctx.fillStyle = "#555";
+      ctx.fillRect(30, 40, 120, 120);
+      ctx.font = `bold 40px ${fontFamily}`;
+      ctx.fillStyle = "#fff";
+      ctx.fillText("U", 80, 140);
+      ctx.restore();
+
+      // Output as PNG
+      res.setHeader("Content-Type", "image/png");
+      res.send(canvas.toBuffer());
+    });
   const app = express();
 
   // Render sets PORT; local uses DASHBOARD_PORT or 3000
