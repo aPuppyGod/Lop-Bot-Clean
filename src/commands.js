@@ -4,7 +4,7 @@ const { get, all, run } = require("./db");
 const { levelFromXp, xpToNextLevel, totalXpForLevel } = require("./xp");
 const { createCanvas, loadImage, registerFont } = require("canvas");
 // Register bundled font
-registerFont(require('path').join(__dirname, '..', 'assets', 'OpenSans-Regular.ttf'), { family: 'OpenSans' });
+registerFont(require('path').join(__dirname, '..', 'assets', 'Open_Sans', 'static', 'OpenSans-Regular.ttf'), { family: 'OpenSans' });
 const { getLevelRoles } = require("./settings");
 const fs = require("fs");
 const path = require("path");
