@@ -75,10 +75,44 @@ function parseCommand(content) {
   return { cmd, args };
 }
 
-function pickUserFromMention(message) {
-  // Supports: mention first, otherwise null
-  const u = message.mentions.users.first();
-  return u || null;
+
+// Smart user picker: mention, ID, username, global name, nickname, fuzzy match
+async function pickUserSmart(message, arg) {
+  if (!message.guild) return null;
+  await message.guild.members.fetch().catch(() => {});
+  const members = message.guild.members.cache.filter(m => !m.user.bot);
+
+  // 1. Mention
+  const mention = message.mentions.users.first();
+  if (mention) return { member: message.guild.members.cache.get(mention.id), ambiguous: false };
+
+  // 2. ID
+  if (/^\d{15,21}$/.test(arg)) {
+    const byId = members.get(arg);
+    if (byId) return { member: byId, ambiguous: false };
+  }
+
+  // 3. Exact username/global/nickname (case-insensitive)
+  const norm = s => String(s || '').toLowerCase();
+  let found = members.filter(m =>
+    norm(m.user.username) === norm(arg) ||
+    norm(m.displayName) === norm(arg) ||
+    norm(m.user.globalName) === norm(arg)
+  );
+  if (found.size === 1) return { member: found.first(), ambiguous: false };
+  if (found.size > 1) return { ambiguous: true, matches: found.map(m => m.user.tag) };
+
+  // 4. Fuzzy/partial match (substring, case-insensitive)
+  found = members.filter(m =>
+    norm(m.user.username).includes(norm(arg)) ||
+    norm(m.displayName).includes(norm(arg)) ||
+    norm(m.user.globalName).includes(norm(arg))
+  );
+  if (found.size === 1) return { member: found.first(), ambiguous: false };
+  if (found.size > 1) return { ambiguous: true, matches: found.map(m => m.user.tag) };
+
+  // 5. No match
+  return null;
 }
 
 function clampInt(n, min, max) {
@@ -209,37 +243,49 @@ async function cmdLeaderboard(message, args) {
 async function cmdShame(message, args) {
   if (!message.guild) return;
 
-  const target = pickUserFromMention(message);
-  if (!target) {
-    await message.reply("Usage: `!shame @user`").catch(() => {});
+  const arg = args[0] || "";
+  const pick = await pickUserSmart(message, arg);
+  if (!pick) {
+    await message.reply("User not found. Usage: `!shame <user>`").catch(() => {});
     return;
   }
-
-  await message.reply(`SHAME ${target} SHAME ON YOU!`).catch(() => {});
+  if (pick.ambiguous) {
+    await message.reply(`Multiple users match: ${pick.matches.join(", ")}. Please be more specific or use their ID/username.`).catch(() => {});
+    return;
+  }
+  await message.reply(`SHAME ${pick.member} SHAME ON YOU!`).catch(() => {});
 }
 
 async function cmdCookieGive(message, args) {
   if (!message.guild) return;
 
-  const target = pickUserFromMention(message);
-  if (!target) {
-    await message.reply("Usage: `!cookie-give @user`").catch(() => {});
+  const arg = args[0] || "";
+  const pick = await pickUserSmart(message, arg);
+  if (!pick) {
+    await message.reply("User not found. Usage: `!cookie-give <user>`").catch(() => {});
     return;
   }
-
-  await message.reply(`You gave a cookie to ${target}! 🍪`).catch(() => {});
+  if (pick.ambiguous) {
+    await message.reply(`Multiple users match: ${pick.matches.join(", ")}. Please be more specific or use their ID/username.`).catch(() => {});
+    return;
+  }
+  await message.reply(`You gave a cookie to ${pick.member}! 🍪`).catch(() => {});
 }
 
 async function cmdStealCookie(message, args) {
   if (!message.guild) return;
 
-  const target = pickUserFromMention(message);
-  if (!target) {
-    await message.reply("Usage: `!steal-cookie @user`").catch(() => {});
+  const arg = args[0] || "";
+  const pick = await pickUserSmart(message, arg);
+  if (!pick) {
+    await message.reply("User not found. Usage: `!steal-cookie <user>`").catch(() => {});
     return;
   }
-
-  await message.reply(`You stole a cookie from ${target}! 🍪`).catch(() => {});
+  if (pick.ambiguous) {
+    await message.reply(`Multiple users match: ${pick.matches.join(", ")}. Please be more specific or use their ID/username.`).catch(() => {});
+    return;
+  }
+  await message.reply(`You stole a cookie from ${pick.member}! 🍪`).catch(() => {});
 }
 
 async function cmdStealCookiesFromEveryone(message) {
@@ -263,43 +309,42 @@ async function cmdXp(message, args) {
   }
 
   const sub = (args[0] || "").toLowerCase();
-  const target = pickUserFromMention(message);
-
-  if (!sub || !["add", "set"].includes(sub) || !target) {
+  const arg = args[1] || "";
+  const pick = await pickUserSmart(message, arg);
+  if (!sub || !["add", "set"].includes(sub) || !pick) {
     await message.reply(
-      "Usage:\n• `!xp add @user <amount>`\n• `!xp set @user <amount>`"
+      "Usage:\n• `!xp add <user> <amount>`\n• `!xp set <user> <amount>`"
     ).catch(() => {});
     return;
   }
-
+  if (pick.ambiguous) {
+    await message.reply(`Multiple users match: ${pick.matches.join(", ")}. Please be more specific or use their ID/username.`).catch(() => {});
+    return;
+  }
+  const target = pick.member;
   const amount = Number.parseInt(args[2], 10);
   if (!Number.isFinite(amount)) {
     await message.reply("Amount must be a number.").catch(() => {});
     return;
   }
-
-  // ensure row exists (Postgres version should still accept this pattern if db.js maps ? correctly)
+  // ensure row exists
   await run(
     `INSERT INTO user_xp (guild_id, user_id, xp, level, last_message_xp_at, last_reaction_xp_at)
      VALUES (?, ?, 0, 0, 0, 0)
      ON CONFLICT (guild_id, user_id) DO NOTHING`,
     [message.guild.id, target.id]
   );
-
   const row = await get(
     `SELECT xp FROM user_xp WHERE guild_id=? AND user_id=?`,
     [message.guild.id, target.id]
   );
-
   const oldXp = row?.xp ?? 0;
   const newXp = sub === "set" ? Math.max(0, amount) : Math.max(0, oldXp + amount);
   const newLevel = levelFromXp(newXp);
-
   await run(
     `UPDATE user_xp SET xp=?, level=? WHERE guild_id=? AND user_id=?`,
     [newXp, newLevel, message.guild.id, target.id]
   );
-
   await message.reply(
     `${sub === "set" ? "Set" : "Added"} XP for ${target} → XP **${newXp}**, Level **${newLevel}**`
   ).catch(() => {});

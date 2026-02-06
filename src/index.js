@@ -111,18 +111,21 @@ async function handleLevelUp(guild, userId, oldLevel, newLevel, message = null) 
     await targetChannel.send(text).catch(() => {});
   }
 
-  // Assign level role if configured
+  // Assign all level roles for levels <= newLevel
   const levelRoles = await getLevelRoles(guild.id);
-  const roleData = levelRoles.find(r => r.level === newLevel);
-  if (roleData) {
+  if (levelRoles.length) {
     try {
       const member = await guild.members.fetch(userId);
-      const role = await guild.roles.fetch(roleData.role_id);
-      if (role && !member.roles.cache.has(role.id)) {
-        await member.roles.add(role);
+      // All roles for levels <= newLevel
+      const eligibleRoles = levelRoles.filter(r => r.level <= newLevel).map(r => r.role_id);
+      for (const roleId of eligibleRoles) {
+        const role = await guild.roles.fetch(roleId).catch(() => null);
+        if (role && !member.roles.cache.has(role.id)) {
+          await member.roles.add(role);
+        }
       }
     } catch (e) {
-      console.error("Failed to assign level role:", e);
+      console.error("Failed to assign level roles:", e);
     }
   }
 }
