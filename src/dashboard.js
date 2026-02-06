@@ -1,3 +1,43 @@
+  // Helper: get user and admin info for templates
+  function getTemplateOpts(req) {
+    const user = req.user || null;
+    let isAdmin = false;
+    if (user && typeof isAdminOrManagerDiscord === 'function' && req.app && req.app.locals && req.app.locals.client) {
+      isAdmin = isAdminOrManagerDiscord(user, req.app.locals.client);
+    } else if (user && typeof isAdminOrManagerDiscord === 'function') {
+      // fallback for direct calls
+      isAdmin = isAdminOrManagerDiscord(user, client);
+    }
+    return { user, isAdmin };
+  }
+  // Leaderboard page
+  app.get("/leaderboard", async (req, res) => {
+    // For now, use the first guild the bot is in
+    const guild = client.guilds.cache.first();
+    if (!guild) {
+      return res.send(htmlTemplate(`<h2>Leaderboard</h2><p>The bot is not in any servers.</p>`, { ...getTemplateOpts(req), active: "leaderboard" }));
+    }
+    // Fetch top 20 users by XP
+    const { all } = require("./db");
+    const rows = await all(
+      `SELECT user_id, xp, level FROM user_xp WHERE guild_id=? ORDER BY xp DESC LIMIT 20`,
+      [guild.id]
+    );
+    // Try to resolve usernames
+    await guild.members.fetch().catch(() => {});
+    const leaderboard = rows.map((r, i) => {
+      const member = guild.members.cache.get(r.user_id);
+      const name = member?.user?.tag || `<@${r.user_id}>`;
+      return `<tr><td>#${i+1}</td><td>${name}</td><td>${r.level}</td><td>${r.xp}</td></tr>`;
+    }).join("");
+    res.send(htmlTemplate(`
+      <h2>Leaderboard</h2>
+      <table>
+        <tr><th>Rank</th><th>User</th><th>Level</th><th>XP</th></tr>
+        ${leaderboard}
+      </table>
+    `, { ...getTemplateOpts(req), active: "leaderboard" }));
+  });
 // Helper: check if user is admin/manager in any guild the bot is in
 function isAdminOrManagerDiscord(user, client) {
   if (!user || !user.id) return false;
@@ -61,43 +101,131 @@ const {
   removeIgnoredChannel
 } = require("./settings");
 
-function htmlTemplate(content) {
+function htmlTemplate(content, opts = {}) {
+  // opts: { user, isAdmin, active }
+  const user = opts.user;
+  const isAdmin = opts.isAdmin;
+  const active = opts.active || "";
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Bot Dashboard</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+  <title>Lop-Bot</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
   <style>
     body {
-      font-family: 'Playfair Display', serif;
-      background: linear-gradient(135deg, #f5f5dc 0%, #ede0d4 50%, #f4e4bc 100%);
+      font-family: 'Montserrat', Arial, sans-serif;
+      background: linear-gradient(135deg, #23272A 0%, #2C2F33 100%);
       margin: 0;
-      padding: 20px;
-      color: #333;
+      padding: 0;
+      color: #eee;
+      min-height: 100vh;
+    }
+    nav {
+      background: #18191c;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      height: 56px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    nav .logo {
+      font-weight: 700;
+      font-size: 1.3em;
+      color: #FFD700;
+      margin-right: 32px;
+      letter-spacing: 1px;
+    }
+    nav a {
+      color: #eee;
+      text-decoration: none;
+      margin-right: 24px;
+      font-weight: 500;
+      transition: color 0.2s;
+      padding: 4px 0;
+      border-bottom: 2px solid transparent;
+    }
+    nav a.active, nav a:hover {
+      color: #FFD700;
+      border-bottom: 2px solid #FFD700;
+    }
+    nav .nav-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+    }
+    nav .user {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.97em;
+    }
+    nav .user img {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 2px solid #FFD700;
+      background: #444;
+    }
+    .container {
+      max-width: 900px;
+      margin: 32px auto 0 auto;
+      background: #23272A;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+      padding: 32px 24px 24px 24px;
     }
     h2 {
-      color: #8b4513;
+      color: #FFD700;
       text-align: center;
+      margin-top: 0;
     }
     h3 {
-      color: #a0522d;
+      color: #43B581;
+      margin-bottom: 8px;
     }
-    button {
-      background-color: #daa520;
-      color: white;
+    button, .btn {
+      background-color: #FFD700;
+      color: #23272A;
       border: none;
-      padding: 10px 15px;
+      padding: 10px 18px;
+      border-radius: 5px;
       cursor: pointer;
-      font-family: 'Playfair Display', serif;
+      font-family: 'Montserrat', Arial, sans-serif;
+      font-weight: 600;
+      font-size: 1em;
+      margin: 8px 0;
+      transition: background 0.2s;
     }
-    button:hover {
-      background-color: #b8860b;
+    button:hover, .btn:hover {
+      background-color: #bfa100;
     }
     input, select {
-      padding: 5px;
-      border: 1px solid #daa520;
+      padding: 7px;
+      border: 1px solid #FFD700;
       border-radius: 4px;
+      background: #18191c;
+      color: #eee;
+      margin-bottom: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 18px;
+    }
+    th, td {
+      padding: 8px 6px;
+      border-bottom: 1px solid #333;
+      text-align: left;
+    }
+    th {
+      color: #FFD700;
+      font-weight: 700;
+      background: #18191c;
+    }
+    tr:last-child td {
+      border-bottom: none;
     }
     ul {
       list-style-type: none;
@@ -107,7 +235,7 @@ function htmlTemplate(content) {
       margin: 5px 0;
     }
     a {
-      color: #8b4513;
+      color: #FFD700;
       text-decoration: none;
     }
     a:hover {
@@ -116,15 +244,33 @@ function htmlTemplate(content) {
     hr {
       border: 0;
       height: 1px;
-      background: linear-gradient(to right, transparent, #daa520, transparent);
+      background: linear-gradient(to right, transparent, #FFD700, transparent);
+      margin: 24px 0;
     }
     form {
       margin-bottom: 20px;
     }
+    @media (max-width: 700px) {
+      .container { padding: 12px 2vw; }
+      nav { flex-direction: column; height: auto; }
+      nav .logo { margin-bottom: 8px; }
+    }
   </style>
 </head>
 <body>
-  ${content}
+  <nav>
+    <span class="logo">Lop-Bot</span>
+    <a href="/"${active==="home"?" class=active":""}>Home</a>
+    <a href="/leaderboard"${active==="leaderboard"?" class=active":""}>Leaderboard</a>
+    <a href="/lop"${active==="rankcard"?" class=active":""}>Rank Card</a>
+    ${isAdmin?'<a href="/dashboard"'+(active==="admin"?' class=active':'')+'>Admin</a>':''}
+    <span class="nav-right">
+      ${user?`<span class="user"><img src="https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64" alt="avatar" />${escapeHtml(user.username)}#${escapeHtml(user.discriminator)} <a href="/logout" class="btn" style="margin-left:10px;">Logout</a></span>`:`<a href="/login" class="btn">Login with Discord</a>`}
+    </span>
+  </nav>
+  <div class="container">
+    ${content}
+  </div>
 </body>
 </html>`;
 }
@@ -375,25 +521,38 @@ function startDashboard(client) {
 
   // Public home page (optional: show info or redirect to /lop)
   app.get("/", (req, res) => {
-    res.redirect("/lop");
+    const opts = getTemplateOpts(req);
+    res.send(htmlTemplate(`
+      <h2>Welcome to Lop-Bot!</h2>
+      <p>Track your XP, level up, and customize your rank card. Compete on the leaderboard and unlock new features as you level up!</p>
+      <ul>
+        <li>View the <a href="/leaderboard">Leaderboard</a></li>
+        <li>Customize your <a href="/lop">Rank Card</a></li>
+        <li>${opts.isAdmin ? 'Access the <a href="/dashboard">Admin Dashboard</a>' : (opts.user ? 'You are not a server admin/manager.' : 'Login to access more features')}</li>
+      </ul>
+    `, { ...opts, active: "home" }));
   });
 
   // Public rank card customization UI (example, not full-featured)
   app.get("/lop", async (req, res) => {
-    // TODO: Replace with real user ID and guild ID if available
-    const userId = req.user?.id || null;
-    const guildId = null; // If you have a way to get the user's guild, set it here
+    const user = req.user;
+    const userId = user?.id || null;
+    // Use the first guild the bot is in
+    const guild = client.guilds.cache.first();
+    const guildId = guild?.id || null;
     let userLevel = 1;
+    let userXp = 0;
     let unlocks = null;
     if (guildId && userId) {
       const { getCustomizationUnlocks } = require("./settings");
       const { get } = require("./db");
       unlocks = await getCustomizationUnlocks(guildId);
       const row = await get(
-        `SELECT level FROM user_xp WHERE guild_id=? AND user_id=?`,
+        `SELECT level, xp FROM user_xp WHERE guild_id=? AND user_id=?`,
         [guildId, userId]
       );
       userLevel = row?.level ?? 1;
+      userXp = row?.xp ?? 0;
     } else {
       unlocks = {
         bgimage: 10,
@@ -415,9 +574,29 @@ function startDashboard(client) {
     function isUnlocked(opt) {
       return userLevel >= (unlocks[opt] ?? 1);
     }
+    // In-memory user prefs (replace with DB in production)
+    let prefs = userRankCardPrefs[userId] || {};
+    // Render customization form if logged in
+    let formHtml = "";
+    if (user) {
+      formHtml = `<form method="post" action="/lop/customize" enctype="multipart/form-data">
+        <div style="display:flex;flex-wrap:wrap;gap:18px;">
+          <div><label>Background Color:<br><input type="color" name="bgcolor" value="${prefs.bgcolor || '#23272A'}" ${!isUnlocked('bgcolor') ? 'disabled' : ''}></label></div>
+          <div><label>Gradient (comma colors):<br><input type="text" name="gradient" value="${prefs.gradient || ''}" placeholder="#23272A,#FFD700" ${!isUnlocked('gradient') ? 'disabled' : ''}></label></div>
+          <div><label>Font:<br><select name="font" ${!isUnlocked('font') ? 'disabled' : ''}>
+            <option value="OpenSans"${prefs.font==='OpenSans'?' selected':''}>Open Sans</option>
+            <option value="Arial"${prefs.font==='Arial'?' selected':''}>Arial</option>
+            <option value="ComicSansMS"${prefs.font==='ComicSansMS'?' selected':''}>Comic Sans MS</option>
+            <option value="TimesNewRoman"${prefs.font==='TimesNewRoman'?' selected':''}>Times New Roman</option>
+          </select></label></div>
+          <div><label>Background Image:<br><input type="file" name="bgimage" accept="image/*" ${!isUnlocked('bgimage') ? 'disabled' : ''}></label></div>
+        </div>
+        <button type="submit">Save Customization</button>
+      </form>`;
+    }
     res.send(htmlTemplate(`
       <h2>Customize Your Rank Card</h2>
-      <p>Your Level: <b>${userLevel}</b></p>
+      ${user ? `<p>Your Level: <b>${userLevel}</b> &mdash; XP: <b>${userXp}</b></p>` : `<p><a href="/login" class="btn">Login with Discord to see your level and customize your card</a></p>`}
       <table style="border-collapse:collapse;">
         <tr><th style="text-align:left;">Feature</th><th style="text-align:left;">Status</th><th style="text-align:left;">Unlocks At</th></tr>
         ${customizationOptions.map(opt => `
@@ -428,9 +607,44 @@ function startDashboard(client) {
           </tr>
         `).join("")}
       </table>
-      <p style="margin-top:20px;">(Customization form coming soon. Only unlocked features will be available for editing.)</p>
+      ${formHtml}
       <img src="/lop/rankcard/image" alt="Rank Card Preview" style="margin-top:20px;border:1px solid #ccc;max-width:100%;" />
-    `));
+    `, { ...getTemplateOpts(req), active: "rankcard" }));
+  });
+
+  // Handle customization form POST
+  app.post("/lop/customize", upload.single("bgimage"), (req, res) => {
+    const user = req.user;
+    if (!user) return res.redirect("/lop");
+    const userId = user.id;
+    // Only allow unlocked features
+    const guild = client.guilds.cache.first();
+    const guildId = guild?.id || null;
+    let userLevel = 1;
+    if (guildId && userId) {
+      // In production, fetch from DB
+      // For now, just use 1
+      // TODO: fetch real level if needed
+    }
+    const unlocks = {
+      bgimage: 10,
+      gradient: 5,
+      bgcolor: 1,
+      font: 3,
+      border: 7,
+      avatarframe: 15
+    };
+    function isUnlocked(opt) {
+      return userLevel >= (unlocks[opt] ?? 1);
+    }
+    // Save prefs in memory (replace with DB in production)
+    if (!userRankCardPrefs[userId]) userRankCardPrefs[userId] = {};
+    const prefs = userRankCardPrefs[userId];
+    if (isUnlocked('bgcolor') && req.body.bgcolor) prefs.bgcolor = req.body.bgcolor;
+    if (isUnlocked('gradient') && req.body.gradient) prefs.gradient = req.body.gradient;
+    if (isUnlocked('font') && req.body.font) prefs.font = req.body.font;
+    if (isUnlocked('bgimage') && req.file) prefs.bgimage = req.file.path;
+    res.redirect("/lop");
   });
 
   // Admin dashboard (Discord admin/manager only)
