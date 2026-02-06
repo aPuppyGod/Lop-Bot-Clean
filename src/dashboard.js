@@ -1,6 +1,7 @@
 
 
 const express = require("express");
+const session = require("express-session");
 function htmlTemplate(content, opts = {}) {
   // opts: { user, isAdmin, active }
   const user = opts.user;
