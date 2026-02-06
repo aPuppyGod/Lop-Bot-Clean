@@ -102,6 +102,7 @@ function isTextChannelLike(ch) {
 }
 
 function startDashboard(client) {
+    const app = express();
     // Serve the user's customized rank card as an image
     app.get("/lop/rankcard/image", async (req, res) => {
       const userKey = req.ip;
