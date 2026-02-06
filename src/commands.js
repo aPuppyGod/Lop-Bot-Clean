@@ -176,29 +176,53 @@ async function cmdHelp(message) {
 async function cmdRank(message, args) {
   if (!message.guild) return;
 
-  const target = message.mentions.users.first() || message.author;
+  // Use smart picker for !rank
+  const arg = args[0] || "";
+  let pick;
+  if (arg) {
+    pick = await pickUserSmart(message, arg);
+    if (!pick) {
+      await message.reply("User not found. Usage: `!rank <user>`").catch(() => {});
+      return;
+    }
+    if (pick.ambiguous) {
+      await message.reply(`Multiple users match: ${pick.matches.join(", ")}. Please be more specific or use their ID/username.`).catch(() => {});
+      return;
+    }
+  }
+  const member = pick ? pick.member : message.guild.members.cache.get(message.author.id);
+  const user = member.user;
 
   const row = await get(
     `SELECT xp, level FROM user_xp WHERE guild_id=? AND user_id=?`,
-    [message.guild.id, target.id]
+    [message.guild.id, user.id]
   );
 
   const xp = row?.xp ?? 0;
   const level = row?.level ?? 0;
+  const nextXp = typeof xpForLevel === "function" ? xpForLevel(level + 1) : xp + 1000;
+  const remaining = Math.max(0, nextXp - xp);
 
-  // Optional: XP to next level display if your xp.js supports xpForLevel
-  let nextLine = "";
-  try {
-    if (typeof xpForLevel === "function") {
-      const nextXp = xpForLevel(level + 1);
-      const remaining = Math.max(0, nextXp - xp);
-      nextLine = `\nXP to next level: **${remaining}**`;
-    }
-  } catch (_) {}
+  // Find rank
+  const leaderboard = await all(
+    `SELECT user_id, xp FROM user_xp WHERE guild_id=? ORDER BY xp DESC`,
+    [message.guild.id]
+  );
+  const rank = leaderboard.findIndex(r => r.user_id === user.id) + 1;
 
-  await message.reply(
-    `**${target.tag}**\nLevel: **${level}**\nXP: **${xp}**${nextLine}`
-  ).catch(() => {});
+  // Avatar
+  const avatarUrl = user.displayAvatarURL ? user.displayAvatarURL({ format: 'png', size: 128 }) : user.avatarURL || user.defaultAvatarURL;
+  const { generateRankCard } = require('./rankCard');
+  const buffer = await generateRankCard({
+    avatarUrl,
+    username: user.username,
+    rank,
+    level,
+    currentXP: xp,
+    xpToNextLevel: nextXp
+  });
+
+  await message.reply({ files: [{ attachment: buffer, name: 'rank_card.png' }] }).catch(() => {});
 }
 
 async function cmdLeaderboard(message, args) {
