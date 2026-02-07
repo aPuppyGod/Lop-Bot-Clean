@@ -220,6 +220,22 @@ async function initDb() {
       PRIMARY KEY (guild_id, option)
     )
   `);
+
+  // User rank card customizations
+  await run(`
+    CREATE TABLE IF NOT EXISTS user_rankcard_customizations (
+      guild_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      font TEXT,
+      fontcolor TEXT,
+      gradient TEXT,
+      bgimage TEXT,
+      bgcolor TEXT,
+      border TEXT,
+      avatarframe TEXT,
+      PRIMARY KEY (guild_id, user_id)
+    )
+  `);
 }
 
 module.exports = {

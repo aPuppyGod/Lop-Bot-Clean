@@ -297,7 +297,11 @@ async function cmdRank(message, args) {
   // Load user prefs if available
   let prefs = {};
   try {
-    prefs = require("../src/dashboard.js").userRankCardPrefs?.[targetUser.id] || {};
+    // Load prefs from DB
+    prefs = await get(
+      `SELECT * FROM user_rankcard_customizations WHERE guild_id = ? AND user_id = ?`,
+      [message.guild.id, targetUser.id]
+    ) || {};
   } catch {}
   // Font family
   let fontFamily = prefs.font || "OpenSans";

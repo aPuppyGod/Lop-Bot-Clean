@@ -4,7 +4,7 @@ const passport = require("passport");
 const multer = require("multer");
 const upload = multer({ dest: "uploads/" });
 
-const userRankCardPrefs = {};
+const { get, run } = require("./db");
 
 // Discord OAuth2 setup
 const DiscordStrategy = require("passport-discord").Strategy;
@@ -463,7 +463,7 @@ function startDashboard(client) {
       ctx.restore();
       // Draw text
       ctx.font = `bold 28px ${fontFamily}`;
-      ctx.fillStyle = "#fff";
+      ctx.fillStyle = prefs.fontcolor || "#fff";
       ctx.fillText(user?.tag || "Your Name", 170, 70);
       ctx.font = `bold 22px ${fontFamily}`;
       ctx.fillStyle = "#FFD700";
@@ -616,7 +616,15 @@ function startDashboard(client) {
       return userLevel >= (unlocks[opt] ?? 1);
     }
     // In-memory user prefs (replace with DB in production)
-    let prefs = userRankCardPrefs[userId] || {};
+      // Load prefs from DB
+      let prefs = {};
+      try {
+        const dbPrefs = await get(
+          `SELECT * FROM user_rankcard_customizations WHERE guild_id = ? AND user_id = ?`,
+          [guildId, userId]
+        );
+        if (dbPrefs) prefs = dbPrefs;
+      } catch (e) {}
     // Render customization form if logged in
     let formHtml = "";
     if (user) {
@@ -787,32 +795,39 @@ function startDashboard(client) {
       function isUnlocked(opt) {
         return userLevel >= (unlocks[opt] ?? 1);
       }
-      // Save prefs in memory (replace with DB in production)
-      if (!userRankCardPrefs[userId]) userRankCardPrefs[userId] = {};
-      const prefs = userRankCardPrefs[userId];
-      const sharp = require('sharp');
-      if (isUnlocked('bgcolor') && req.body.bgcolor) userRankCardPrefs[userId].bgcolor = req.body.bgcolor;
-      if (isUnlocked('gradient') && req.body.gradient) userRankCardPrefs[userId].gradient = req.body.gradient;
-      if (isUnlocked('font') && req.body.font) userRankCardPrefs[userId].font = req.body.font;
-      if (isUnlocked('font') && req.body.fontcolor) userRankCardPrefs[userId].fontcolor = req.body.fontcolor;
-      if (isUnlocked('bgimage') && req.file) {
-        // Use crop parameters from client if provided
-        const cropX = parseInt(req.body.cropX) || 0;
-        const cropY = parseInt(req.body.cropY) || 0;
-        const cropW = parseInt(req.body.cropW) || 600;
-        const cropH = parseInt(req.body.cropH) || 180;
-        const croppedPath = req.file.path + '_cropped.png';
-        sharp(req.file.path)
-          .extract({ left: cropX, top: cropY, width: cropW, height: cropH })
-          .resize(600, 180, { fit: 'cover' })
-          .toFile(croppedPath, (err) => {
-            userRankCardPrefs[userId].bgimage = !err ? croppedPath : req.file.path;
-            res.redirect("/lop");
-          });
-        return;
-      }
-      res.redirect("/lop");
-    })();
+      // Save prefs to DB
+      (async () => {
+        const sharp = require('sharp');
+        let update = {};
+        if (isUnlocked('bgcolor') && req.body.bgcolor) update.bgcolor = req.body.bgcolor;
+        if (isUnlocked('gradient') && req.body.gradient) update.gradient = req.body.gradient;
+        if (isUnlocked('font') && req.body.font) update.font = req.body.font;
+        if (isUnlocked('font') && req.body.fontcolor) update.fontcolor = req.body.fontcolor;
+        if (isUnlocked('bgimage') && req.file) {
+          // Use crop parameters from client if provided
+          const cropX = parseInt(req.body.cropX) || 0;
+          const cropY = parseInt(req.body.cropY) || 0;
+          const cropW = parseInt(req.body.cropW) || 600;
+          const cropH = parseInt(req.body.cropH) || 180;
+          const croppedPath = req.file.path + '_cropped.png';
+          await sharp(req.file.path)
+            .extract({ left: cropX, top: cropY, width: cropW, height: cropH })
+            .resize(600, 180, { fit: 'cover' })
+            .toFile(croppedPath);
+          update.bgimage = croppedPath;
+        }
+        // Upsert prefs
+        const keys = Object.keys(update);
+        if (keys.length > 0) {
+          const fields = keys.join(', ');
+          const values = keys.map(k => update[k]);
+          await run(
+            `INSERT OR REPLACE INTO user_rankcard_customizations (guild_id, user_id, ${fields}) VALUES (?, ?, ${keys.map(() => '?').join(', ')})`,
+            [guildId, userId, ...values]
+          );
+        }
+        res.redirect("/lop");
+      })();
   });
 
   // Admin dashboard (Discord admin/manager only)
