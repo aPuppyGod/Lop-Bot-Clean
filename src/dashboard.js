@@ -777,9 +777,9 @@ function startDashboard(client) {
     if (!userRankCardPrefs[userId]) userRankCardPrefs[userId] = {};
     const prefs = userRankCardPrefs[userId];
     const sharp = require('sharp');
-    if (isUnlocked('bgcolor') && req.body.bgcolor) prefs.bgcolor = req.body.bgcolor;
-    if (isUnlocked('gradient') && req.body.gradient) prefs.gradient = req.body.gradient;
-    if (isUnlocked('font') && req.body.font) prefs.font = req.body.font;
+    if (isUnlocked('bgcolor') && req.body.bgcolor) userRankCardPrefs[userId].bgcolor = req.body.bgcolor;
+    if (isUnlocked('gradient') && req.body.gradient) userRankCardPrefs[userId].gradient = req.body.gradient;
+    if (isUnlocked('font') && req.body.font) userRankCardPrefs[userId].font = req.body.font;
     if (isUnlocked('bgimage') && req.file) {
       // Use crop parameters from client if provided
       const sharp = require('sharp');
