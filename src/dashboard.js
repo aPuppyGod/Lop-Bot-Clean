@@ -632,8 +632,6 @@ function startDashboard(client) {
             <input type="text" name="gradient" id="gradientInput" value="${prefs.gradient || ''}" placeholder="#23272A,#FFD700" ${!isUnlocked('gradient') ? 'disabled' : ''} style="margin-left:8px;width:120px;">
           </label></div>
           <div><label>Font:<br><select name="font" id="fontSelect" ${!isUnlocked('font') ? 'disabled' : ''}>
-                      </select></label></div>
-                      <div><label>Font Color:<br><input type="color" name="fontcolor" value="${prefs.fontcolor || '#ffffff'}" ${!isUnlocked('font') ? 'disabled' : ''}></label></div>
             <option value="OpenSans" style="font-family:'Open Sans',sans-serif;"${prefs.font==='OpenSans'?' selected':''}>Open Sans</option>
             <option value="Arial" style="font-family:Arial;"${prefs.font==='Arial'?' selected':''}>Arial</option>
             <option value="ComicSansMS" style="font-family:'Comic Sans MS',cursive;"${prefs.font==='ComicSansMS'?' selected':''}>Comic Sans MS</option>
@@ -665,6 +663,8 @@ function startDashboard(client) {
             <option value="Teko" style="font-family:'Teko',sans-serif;"${prefs.font==='Teko'?' selected':''}>Teko</option>
             <option value="VarelaRound" style="font-family:'Varela Round',sans-serif;"${prefs.font==='VarelaRound'?' selected':''}>Varela Round</option>
             <option value="ZillaSlab" style="font-family:'Zilla Slab',serif;"${prefs.font==='ZillaSlab'?' selected':''}>Zilla Slab</option>
+          </select></label></div>
+          <div><label>Font Color:<br><input type="color" name="fontcolor" value="${prefs.fontcolor || '#ffffff'}" ${!isUnlocked('font') ? 'disabled' : ''}></label></div>
           </select></label></div>
           <div>
             <label>Background Image:<br>
