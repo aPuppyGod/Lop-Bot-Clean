@@ -772,6 +772,8 @@ function startDashboard(client) {
 
   // Handle customization form POST
   app.post("/lop/customize", upload.single("bgimage"), (req, res) => {
+app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
+  try {
     const user = req.user;
     if (!user) return res.redirect("/lop");
     const userId = user.id;
@@ -779,62 +781,64 @@ function startDashboard(client) {
     const guild = client.guilds.cache.first();
     const guildId = guild?.id || null;
     const { get } = require("./db");
-    (async () => {
-      let userLevel = 1;
-      if (guildId && userId) {
-        try {
-          const row = await get(
-            `SELECT level FROM user_xp WHERE guild_id=? AND user_id=?`,
-            [guildId, userId]
-          );
-          userLevel = row?.level ?? 1;
-        } catch (e) {
-          userLevel = 1;
-        }
-      }
-      const unlocks = {
-        bgimage: 10,
-        gradient: 5,
-        bgcolor: 1,
-        font: 3,
-        border: 7,
-        avatarframe: 15
-      };
-      function isUnlocked(opt) {
-        return userLevel >= (unlocks[opt] ?? 1);
-      }
-      // Save prefs to DB
-      const sharp = require('sharp');
-      let update = {};
-      if (isUnlocked('bgcolor') && req.body.bgcolor) update.bgcolor = req.body.bgcolor;
-      if (isUnlocked('gradient') && req.body.gradient) update.gradient = req.body.gradient;
-      if (isUnlocked('font') && req.body.font) update.font = req.body.font;
-      if (isUnlocked('font') && req.body.fontcolor) update.fontcolor = req.body.fontcolor;
-      if (isUnlocked('bgimage') && req.file) {
-        // Use crop parameters from client if provided
-        const cropX = parseInt(req.body.cropX) || 0;
-        const cropY = parseInt(req.body.cropY) || 0;
-        const cropW = parseInt(req.body.cropW) || 600;
-        const cropH = parseInt(req.body.cropH) || 180;
-        const croppedPath = req.file.path + '_cropped.png';
-        await sharp(req.file.path)
-          .extract({ left: cropX, top: cropY, width: cropW, height: cropH })
-          .resize(600, 180, { fit: 'cover' })
-          .toFile(croppedPath);
-        update.bgimage = croppedPath;
-      }
-      // Upsert prefs
-      const keys = Object.keys(update);
-      if (keys.length > 0) {
-        const fields = keys.join(', ');
-        const values = keys.map(k => update[k]);
-        await run(
-          `INSERT OR REPLACE INTO user_rankcard_customizations (guild_id, user_id, ${fields}) VALUES (?, ?, ${keys.map(() => '?').join(', ')})`,
-          [guildId, userId, ...values]
+    let userLevel = 1;
+    if (guildId && userId) {
+      try {
+        const row = await get(
+          `SELECT level FROM user_xp WHERE guild_id=? AND user_id=?`,
+          [guildId, userId]
         );
+        userLevel = row?.level ?? 1;
+      } catch (e) {
+        userLevel = 1;
       }
-      res.redirect("/lop");
-    })();
+    }
+    const unlocks = {
+      bgimage: 10,
+      gradient: 5,
+      bgcolor: 1,
+      font: 3,
+      border: 7,
+      avatarframe: 15
+    };
+    function isUnlocked(opt) {
+      return userLevel >= (unlocks[opt] ?? 1);
+    }
+    // Save prefs to DB
+    const sharp = require('sharp');
+    let update = {};
+    if (isUnlocked('bgcolor') && req.body.bgcolor) update.bgcolor = req.body.bgcolor;
+    if (isUnlocked('gradient') && req.body.gradient) update.gradient = req.body.gradient;
+    if (isUnlocked('font') && req.body.font) update.font = req.body.font;
+    if (isUnlocked('font') && req.body.fontcolor) update.fontcolor = req.body.fontcolor;
+    if (isUnlocked('bgimage') && req.file) {
+      // Use crop parameters from client if provided
+      const cropX = parseInt(req.body.cropX) || 0;
+      const cropY = parseInt(req.body.cropY) || 0;
+      const cropW = parseInt(req.body.cropW) || 600;
+      const cropH = parseInt(req.body.cropH) || 180;
+      const croppedPath = req.file.path + '_cropped.png';
+      await sharp(req.file.path)
+        .extract({ left: cropX, top: cropY, width: cropW, height: cropH })
+        .resize(600, 180, { fit: 'cover' })
+        .toFile(croppedPath);
+      update.bgimage = croppedPath;
+    }
+    // Upsert prefs
+    const keys = Object.keys(update);
+    if (keys.length > 0) {
+      const fields = keys.join(', ');
+      const values = keys.map(k => update[k]);
+      await run(
+        `INSERT OR REPLACE INTO user_rankcard_customizations (guild_id, user_id, ${fields}) VALUES (?, ?, ${keys.map(() => '?').join(', ')})`,
+        [guildId, userId, ...values]
+      );
+    }
+    res.redirect("/lop");
+  } catch (e) {
+    console.error("/lop/customize error:", e);
+    res.status(500).send("Failed to save customization. Please try again.");
+  }
   });
 
   // Admin dashboard (Discord admin/manager only)
