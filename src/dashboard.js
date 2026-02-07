@@ -1,4 +1,3 @@
-
 const express = require("express");
 const session = require("express-session");
 const passport = require("passport");
@@ -214,9 +213,8 @@ function escapeHtml(s) {
     .replaceAll('"', "&quot;");
 }
 
-function isTextChannelLike(ch) {
-  return !!ch && typeof ch.isTextBased === "function" && ch.isTextBased();
-}
+const { getGuildSettings, getLevelRoles, getIgnoredChannels } = require("./settings");
+const { isTextChannelLike } = require("./db");
 
 function startDashboard(client) {
     const app = express();
