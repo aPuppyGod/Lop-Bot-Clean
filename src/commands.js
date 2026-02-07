@@ -241,7 +241,7 @@ async function cmdRank(message, args) {
       ctx.arc(90, 90, 60, 0, Math.PI * 2);
       ctx.closePath();
       ctx.clip();
-      ctx.drawImage(avatar, 30, 30, 120, 120);
+      ctx.drawImage(avatar, 30, 20, 120, 120);
       ctx.restore();
     } else {
       throw new Error('Avatar fetch failed');
@@ -312,22 +312,22 @@ async function cmdRank(message, args) {
   if (!isRenderable(displayName, fontFamily)) displayName = targetUser.username;
   ctx.font = `bold 28px ${fontFamily}`;
   ctx.fillStyle = fontColor;
-  ctx.fillText(displayName, 170, 70);
+  ctx.fillText(displayName, 170, 50);
 
   ctx.font = "bold 22px OpenSans";
   ctx.fillStyle = "#FFD700";
-  ctx.fillText(`Level: ${level}`, 170, 110);
+  ctx.fillText(`Level: ${level}`, 170, 80);
 
   ctx.font = "bold 22px OpenSans";
   ctx.fillStyle = "#43B581";
-  if (rank && rank > 0) ctx.fillText(`Rank: #${rank}`, 170, 135);
+  if (rank && rank > 0) ctx.fillText(`Rank: #${rank}`, 170, 105);
 
   ctx.font = "16px OpenSans";
   ctx.fillStyle = "#aaa";
-  ctx.fillText(`XP: ${xp} / ${xpNext} (+${xpToNext} to next)`, 170, 160);
+  ctx.fillText(`XP: ${xp} / ${xpNext} (+${xpToNext} to next)`, 170, 130);
 
   // Progress bar
-  const barX = 170, barY = 175, barW = 380, barH = 20;
+  const barX = 170, barY = 145, barW = 380, barH = 20;
   ctx.fillStyle = "#444";
   ctx.fillRect(barX, barY, barW, barH);
   const progress = Math.max(0, Math.min(1, (xp - xpStart) / (xpNext - xpStart)));

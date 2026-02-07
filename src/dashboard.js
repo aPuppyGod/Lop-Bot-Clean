@@ -632,6 +632,7 @@ function startDashboard(client) {
             <input type="text" name="gradient" id="gradientInput" value="${prefs.gradient || ''}" placeholder="#23272A,#FFD700" ${!isUnlocked('gradient') ? 'disabled' : ''} style="margin-left:8px;width:120px;">
           </label></div>
           <div><label>Font:<br><select name="font" id="fontSelect" ${!isUnlocked('font') ? 'disabled' : ''}>
+                      </select></label></div>
                       <div><label>Font Color:<br><input type="color" name="fontcolor" value="${prefs.fontcolor || '#ffffff'}" ${!isUnlocked('font') ? 'disabled' : ''}></label></div>
             <option value="OpenSans" style="font-family:'Open Sans',sans-serif;"${prefs.font==='OpenSans'?' selected':''}>Open Sans</option>
             <option value="Arial" style="font-family:Arial;"${prefs.font==='Arial'?' selected':''}>Arial</option>
@@ -678,7 +679,9 @@ function startDashboard(client) {
             <input type="hidden" name="cropH" id="cropH">
           </div>
         </div>
-        <button type="submit">Save Customization</button>
+        <div style="width:100%;display:flex;justify-content:flex-end;margin-top:18px;">
+          <button type="submit">Save Customization</button>
+        </div>
       </form>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
       <script>
