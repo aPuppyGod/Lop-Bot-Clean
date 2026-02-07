@@ -360,7 +360,15 @@ function startDashboard(client) {
       function isUnlocked(opt) {
         return userLevel >= (unlocks[opt] ?? 1);
       }
-      let prefs = userRankCardPrefs[userId] || {};
+      // Load prefs from DB
+      let prefs = {};
+      try {
+        const dbPrefs = await get(
+          `SELECT * FROM user_rankcard_customizations WHERE guild_id = ? AND user_id = ?`,
+          [guildId, userId]
+        );
+        if (dbPrefs) prefs = dbPrefs;
+      } catch (e) {}
       // Canvas size unified with Discord bot: 600x180
       const width = 600, height = 180;
       const canvas = createCanvas(width, height);
