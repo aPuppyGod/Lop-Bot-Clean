@@ -25,7 +25,8 @@ const pool = new Pool({
   connectionTimeoutMillis: 30000,  // 30 seconds to establish connection
   idleTimeoutMillis: 30000,        // 30 seconds idle before closing
   max: 20,                          // Max connections in pool
-  statement_timeout: 30000          // Query timeout in milliseconds
+  statement_timeout: 30000,         // Query timeout in milliseconds
+  keepAlive: true
 });
 
 // Handle pool errors
