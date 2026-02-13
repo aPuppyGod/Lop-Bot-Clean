@@ -8,16 +8,33 @@ const { Pool } = require("pg");
 const DATABASE_URL = process.env.DATABASE_URL;
 
 if (!DATABASE_URL) {
-  console.warn(
-    "[db] WARNING: DATABASE_URL is not set. Add a Railway Postgres database or set DATABASE_URL."
+  console.error(
+    "[db] FATAL: DATABASE_URL is not set. Add a Railway Postgres database or set DATABASE_URL environment variable."
   );
+  process.exit(1);
 }
+
+console.log("[db] Initializing database connection pool...");
 
 // Recommended for Railway: use SSL if provided; Railway usually works without extra SSL config,
 // but leaving this as "auto" is safest.
 const pool = new Pool({
   connectionString: DATABASE_URL,
-  ssl: process.env.PGSSL === "true" ? { rejectUnauthorized: false } : undefined
+  ssl: process.env.PGSSL === "true" ? { rejectUnauthorized: false } : undefined,
+  // Connection pool settings to handle timeouts better
+  connectionTimeoutMillis: 30000,  // 30 seconds to establish connection
+  idleTimeoutMillis: 30000,        // 30 seconds idle before closing
+  max: 20,                          // Max connections in pool
+  statement_timeout: 30000          // Query timeout in milliseconds
+});
+
+// Handle pool errors
+pool.on("error", (err) => {
+  console.error("[db] Unexpected error on idle client in pool:", err);
+});
+
+pool.on("connect", () => {
+  console.log("[db] New client connected to database");
 });
 
 // ─────────────────────────────────────────────
@@ -130,22 +147,50 @@ async function all(sql, params = []) {
 }
 
 // ─────────────────────────────────────────────
-// initDb: create tables
+// Test connection and initDb
 // ─────────────────────────────────────────────
 
+async function testConnection() {
+  try {
+    console.log("[db] Testing database connection...");
+    const client = await pool.connect();
+    const result = await client.query("SELECT NOW()");
+    client.release();
+    console.log("[db] ✓ Database connection successful:", result.rows[0]);
+    return true;
+  } catch (err) {
+    console.error("[db] ✗ Failed to connect to database:");
+    console.error("   Error:", err.message);
+    if (err.code === "ENOTFOUND") {
+      console.error("   → Host not found. Check DATABASE_URL hostname.");
+    } else if (err.code === "ECONNREFUSED") {
+      console.error("   → Connection refused. Is the database server running?");
+    } else if (err.code === "ETIMEDOUT") {
+      console.error("   → Connection timeout. Check network access to database.");
+    }
+    throw err;
+  }
+}
+
 async function initDb() {
-  // Core XP table
-  await run(`
-    CREATE TABLE IF NOT EXISTS user_xp (
-      guild_id TEXT NOT NULL,
-      user_id TEXT NOT NULL,
-      xp INTEGER DEFAULT 0,
-      level INTEGER DEFAULT 0,
-      last_message_xp_at BIGINT DEFAULT 0,
-      last_reaction_xp_at BIGINT DEFAULT 0,
-      PRIMARY KEY (guild_id, user_id)
-    )
-  `);
+  try {
+    console.log("[db] Initializing database tables...");
+    
+    // Test connection first
+    await testConnection();
+
+    // Core XP table
+    await run(`
+      CREATE TABLE IF NOT EXISTS user_xp (
+        guild_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        xp INTEGER DEFAULT 0,
+        level INTEGER DEFAULT 0,
+        last_message_xp_at BIGINT DEFAULT 0,
+        last_reaction_xp_at BIGINT DEFAULT 0,
+        PRIMARY KEY (guild_id, user_id)
+      )
+    `);
 
   // Guild settings
   await run(`
@@ -236,10 +281,17 @@ async function initDb() {
       PRIMARY KEY (guild_id, user_id)
     )
   `);
+
+  console.log("[db] ✓ All database tables initialized successfully");
+} catch (err) {
+  console.error("[db] ✗ Failed to initialize database:");
+  console.error(err);
+  throw err;
 }
 
 module.exports = {
   initDb,
+  testConnection,
   run,
   get,
   all,
