@@ -290,10 +290,166 @@ function htmlTemplate(content, opts = {}) {
     form {
       margin-bottom: 20px;
     }
-    @media (max-width: 700px) {
-      .container { padding: 12px 2vw; }
-      nav { flex-direction: column; height: auto; }
-      nav .logo { margin-bottom: 8px; }
+    
+    /* Mobile Responsive Styles */
+    @media (max-width: 768px) {
+      body {
+        font-size: 14px;
+      }
+      
+      nav {
+        padding: 12px;
+        height: auto;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center;
+      }
+      
+      nav .logo {
+        width: 100%;
+        text-align: center;
+        margin: 0 0 8px 0;
+        font-size: 1.2em;
+      }
+      
+      nav a {
+        margin: 0 8px;
+        font-size: 0.9em;
+        white-space: nowrap;
+      }
+      
+      nav .nav-right {
+        width: 100%;
+        margin: 8px 0 0 0;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      
+      nav .user {
+        flex-wrap: wrap;
+        justify-content: center;
+        font-size: 0.85em;
+      }
+      
+      nav .user img {
+        width: 28px;
+        height: 28px;
+      }
+      
+      #themeToggle {
+        padding: 6px 10px;
+        font-size: 0.85em;
+        margin: 0;
+      }
+      
+      .container {
+        margin: 16px 8px;
+        padding: 16px 12px;
+        border-radius: 8px;
+      }
+      
+      h2 {
+        font-size: 1.4em;
+      }
+      
+      h3 {
+        font-size: 1.1em;
+      }
+      
+      table {
+        font-size: 0.85em;
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      
+      th, td {
+        padding: 6px 4px;
+        white-space: nowrap;
+      }
+      
+      button, .btn {
+        padding: 8px 14px;
+        font-size: 0.9em;
+        width: 100%;
+        max-width: 300px;
+        margin: 6px auto;
+        display: block;
+      }
+      
+      input, select {
+        font-size: 16px; /* Prevents zoom on iOS */
+        width: 100%;
+        box-sizing: border-box;
+      }
+      
+      /* Leaderboard mobile fixes */
+      .leaderboard-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      
+      .lb-user {
+        padding: 10px 6px !important;
+      }
+      
+      .lb-avatar {
+        width: 40px !important;
+        height: 40px !important;
+      }
+      
+      .lb-rank {
+        font-size: 0.9em;
+        width: 60px;
+      }
+      
+      .lb-level, .lb-xp {
+        width: 100px;
+        font-size: 0.85em;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      nav .logo {
+        font-size: 1.1em;
+      }
+      
+      nav a {
+        font-size: 0.85em;
+        margin: 0 4px;
+      }
+      
+      .container {
+        margin: 12px 4px;
+        padding: 12px 8px;
+      }
+      
+      h2 {
+        font-size: 1.3em;
+      }
+      
+      table {
+        font-size: 0.75em;
+      }
+      
+      th, td {
+        padding: 4px 2px;
+      }
+      
+      .lb-avatar {
+        width: 32px !important;
+        height: 32px !important;
+      }
+      
+      .lb-user span {
+        font-size: 0.9em;
+      }
+      
+      .lb-rank {
+        width: 50px;
+        padding-left: 2px !important;
+      }
     }
   </style>
   <script>
@@ -1078,6 +1234,143 @@ function startDashboard(client) {
         .reset-btn:hover {
           background: rgba(184,134,11,0.3);
         }
+        
+        /* Mobile styles for customization form */
+        @media (max-width: 768px) {
+          .customize-form {
+            padding: 16px;
+          }
+          
+          .customize-section {
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+          }
+          
+          .section-title {
+            font-size: 1em;
+            flex-wrap: wrap;
+            gap: 4px;
+          }
+          
+          .customize-grid {
+            grid-template-columns: 1fr;
+            gap: 12px;
+          }
+          
+          .form-group label {
+            font-size: 0.9em;
+          }
+          
+          .customize-form input[type="color"],
+          .customize-form input[type="text"],
+          .customize-form select,
+          .customize-form input[type="number"] {
+            font-size: 16px;
+            width: 100%;
+            box-sizing: border-box;
+          }
+          
+          .image-upload-area {
+            padding: 16px;
+          }
+          
+          #cropperContainer {
+            max-width: 100%;
+          }
+          
+          #cropperContainer img {
+            max-width: 100%;
+            height: auto;
+          }
+          
+          .customize-form button[type="submit"],
+          .reset-btn {
+            width: 100%;
+            max-width: none;
+            padding: 10px 20px;
+          }
+        }
+        
+        @media (max-width: 480px) {
+          .customize-form {
+            padding: 12px;
+          }
+          
+          .section-title {
+            font-size: 0.95em;
+          }
+          
+          .feature-badge {
+            font-size: 0.7em;
+            padding: 2px 6px;
+          }
+          
+          .form-group label {
+            font-size: 0.85em;
+          }
+          
+          .image-upload-area {
+            padding: 12px;
+          }
+          
+          .avatar-frame-grid label {
+            padding: 8px !important;
+          }
+          
+          .avatar-frame-grid label > div {
+            width: 50px !important;
+            height: 50px !important;
+            font-size: 1.5em !important;
+          }
+          
+          .avatar-frame-grid label > span {
+            font-size: 0.75em !important;
+          }
+        }
+        
+        .avatar-frame-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+          gap: 12px;
+        }
+        
+        @media (max-width: 768px) {
+          .avatar-frame-grid {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+          }
+        }
+        
+        @media (max-width: 480px) {
+          .avatar-frame-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+          }
+        }
+        
+        .form-actions {
+          display: flex;
+          gap: 12px;
+          margin-top: 24px;
+          justify-content: space-between;
+        }
+        
+        .form-actions > div:last-child {
+          display: flex;
+          gap: 12px;
+        }
+        
+        @media (max-width: 768px) {
+          .form-actions {
+            flex-direction: column;
+            gap: 8px;
+          }
+          
+          .form-actions > div:last-child {
+            flex-direction: column;
+            width: 100%;
+          }
+        }
       </style>
       <form id="customizeForm" class="customize-form" method="post" action="/lop/customize" enctype="multipart/form-data">
         
@@ -1192,7 +1485,7 @@ function startDashboard(client) {
           </div>
           <div class="form-group" style="grid-column: 1/-1;">
             <label style="font-weight:600;margin-bottom:12px;display:block;">Choose a frame style:</label>
-            <div style="display:grid;grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));gap:12px;">
+            <div class="avatar-frame-grid">
               <label style="display:flex;flex-direction:column;align-items:center;cursor:pointer;gap:6px;padding:12px;border-radius:8px;border:2px solid transparent;transition:all 0.2s;${!isUnlocked('avatarframe') ? 'opacity:0.5;cursor:not-allowed;' : ''}">
                 <div style="width:70px;height:70px;border-radius:50%;background:#999;display:flex;align-items:center;justify-content:center;font-size:2em;">👤</div>
                 <span style="font-weight:600;font-size:0.85em;">None</span>
@@ -1250,9 +1543,9 @@ function startDashboard(client) {
         </div>
 
         <!-- Actions -->
-        <div style="display:flex;gap:12px;margin-top:24px;justify-content:space-between;">
+        <div class="form-actions">
           <div></div>
-          <div style="display:flex;gap:12px;">
+          <div>
             <button type="button" class="reset-btn" onclick="if(confirm('Reset to default customization?')) {document.getElementById('customizeForm').reset(); location.reload();}">↻ Reset to Defaults</button>
             <button type="submit">💾 Save Customization</button>
           </div>
