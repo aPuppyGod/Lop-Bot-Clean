@@ -46,12 +46,12 @@ function htmlTemplate(content, opts = {}) {
       min-height: 100vh;
     }
     nav {
-      background: #ffddfc;
+      background: linear-gradient(135deg, #ffddfc 0%, #edd7ae 100%);
       padding: 0 24px;
       display: flex;
       align-items: center;
       height: 56px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      box-shadow: 0 2px 12px rgba(255, 221, 252, 0.2);
     }
     nav .logo {
       font-weight: 700;
@@ -70,8 +70,8 @@ function htmlTemplate(content, opts = {}) {
       border-bottom: 2px solid transparent;
     }
     nav a.active, nav a:hover {
-      color: #71faf9;
-      border-bottom: 2px solid #71faf9;
+      color: #ffddfc;
+      border-bottom: 2px solid #ffddfc;
     }
     nav .nav-right {
       margin-left: auto;
@@ -89,7 +89,7 @@ function htmlTemplate(content, opts = {}) {
       width: 32px;
       height: 32px;
       border-radius: 50%;
-      border: 2px solid #71faf9;
+      border: 2px solid #ffddfc;
       background: #444;
     }
     .container {
@@ -97,21 +97,28 @@ function htmlTemplate(content, opts = {}) {
       margin: 32px auto 0 auto;
       background: #1a2a2a;
       border-radius: 12px;
-      box-shadow: 0 4px 24px rgba(113, 250, 249, 0.1);
+      box-shadow: 0 4px 24px rgba(255, 221, 252, 0.12);
       padding: 32px 24px 24px 24px;
-      border: 1px solid rgba(113, 250, 249, 0.2);
+      border: 2px solid transparent;
+      background-image: linear-gradient(#1a2a2a, #1a2a2a), linear-gradient(135deg, #ffddfc, #edd7ae);
+      background-origin: border-box;
+      background-clip: padding-box, border-box;
     }
     h2 {
-      color: #71faf9;
+      color: #ffddfc;
       text-align: center;
       margin-top: 0;
+      background: linear-gradient(135deg, #ffddfc 0%, #edd7ae 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
     h3 {
-      color: #ffddfc;
+      color: #71faf9;
       margin-bottom: 8px;
     }
     button, .btn {
-      background-color: #71faf9;
+      background: linear-gradient(135deg, #ffddfc 0%, #edd7ae 100%);
       color: #0a1e1e;
       border: none;
       padding: 10px 18px;
@@ -121,25 +128,29 @@ function htmlTemplate(content, opts = {}) {
       font-weight: 600;
       font-size: 1em;
       margin: 8px 0;
-      transition: all 0.2s;
+      transition: all 0.3s;
+      box-shadow: 0 4px 12px rgba(255, 221, 252, 0.2);
     }
     button:hover, .btn:hover {
-      background-color: #ffddfc;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(113, 250, 249, 0.3);
+      background: linear-gradient(135deg, #edd7ae 0%, #ffddfc 100%);
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(255, 221, 252, 0.4);
     }
     input, select {
       padding: 7px;
-      border: 1px solid #71faf9;
+      border: 2px solid transparent;
       border-radius: 4px;
       background: #0a1e1e;
+      background-image: linear-gradient(#0a1e1e, #0a1e1e), linear-gradient(135deg, #ffddfc, #edd7ae);
+      background-origin: border-box;
+      background-clip: padding-box, border-box;
       color: #f0f0f0;
       margin-bottom: 8px;
     }
     input:focus, select:focus {
       outline: none;
-      border-color: #ffddfc;
-      box-shadow: 0 0 8px rgba(255, 221, 252, 0.3);
+      background-image: linear-gradient(#0a1e1e, #0a1e1e), linear-gradient(135deg, #ffddfc, #edd7ae);
+      box-shadow: 0 0 12px rgba(255, 221, 252, 0.4);
     }
     table {
       width: 100%;
@@ -152,7 +163,7 @@ function htmlTemplate(content, opts = {}) {
       text-align: left;
     }
     th {
-      color: #71faf9;
+      color: #ffddfc;
       font-weight: 700;
       background: #0a1e1e;
     }
@@ -167,18 +178,18 @@ function htmlTemplate(content, opts = {}) {
       margin: 5px 0;
     }
     a {
-      color: #71faf9;
+      color: #ffddfc;
       text-decoration: none;
       transition: color 0.2s;
     }
     a:hover {
-      color: #ffddfc;
+      color: #edd7ae;
       text-decoration: underline;
     }
     hr {
       border: 0;
-      height: 1px;
-      background: linear-gradient(to right, transparent, #71faf9, transparent);
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #ffddfc 20%, #edd7ae 50%, #ffddfc 80%, transparent);
       margin: 24px 0;
     }
     form {
@@ -485,7 +496,7 @@ function startDashboard(client) {
       ctx.fillStyle = prefs.fontcolor || "#fff";
       ctx.fillText(user?.tag || "Your Name", 170, 70);
       ctx.font = `bold 22px ${fontFamily}`;
-      ctx.fillStyle = "#71faf9";
+      ctx.fillStyle = "#ffddfc";
       ctx.fillText(`Level: ${userLevel}`, 170, 110);
       ctx.font = `16px ${fontFamily}`;
       ctx.fillStyle = "#ccc";
@@ -494,7 +505,10 @@ function startDashboard(client) {
       const barX = 170, barY = 150, barW = 380, barH = 20;
       ctx.fillStyle = "#2a4a4a";
       ctx.fillRect(barX, barY, barW, barH);
-      ctx.fillStyle = "#ffddfc";
+      const progressGrad = ctx.createLinearGradient(barX, barY, barX + barW * 0.1, barY);
+      progressGrad.addColorStop(0, "#ffddfc");
+      progressGrad.addColorStop(1, "#edd7ae");
+      ctx.fillStyle = progressGrad;
       ctx.fillRect(barX, barY, barW * 0.1, barH);
       ctx.strokeStyle = "#0a1e1e";
       ctx.lineWidth = 2;
@@ -654,9 +668,9 @@ function startDashboard(client) {
         <div style="display:flex;flex-wrap:wrap;gap:18px;">
           <div><label>Background Color:<br><input type="color" name="bgcolor" value="${prefs.bgcolor || '#1a2a2a'}" ${!isUnlocked('bgcolor') ? 'disabled' : ''}></label></div>
           <div><label>Gradient:<br>
-            <input type="color" id="gradColor1" value="${prefs.gradient?.split(',')[0] || '#1a2a2a'}" ${!isUnlocked('gradient') ? 'disabled' : ''}>
-            <input type="color" id="gradColor2" value="${prefs.gradient?.split(',')[1] || '#71faf9'}" ${!isUnlocked('gradient') ? 'disabled' : ''}>
-            <input type="text" name="gradient" id="gradientInput" value="${prefs.gradient || ''}" placeholder="#1a2a2a,#71faf9" ${!isUnlocked('gradient') ? 'disabled' : ''} style="margin-left:8px;width:140px;">
+            <input type="color" id="gradColor1" value="${prefs.gradient?.split(',')[0] || '#ffddfc'}" ${!isUnlocked('gradient') ? 'disabled' : ''}>
+            <input type="color" id="gradColor2" value="${prefs.gradient?.split(',')[1] || '#edd7ae'}" ${!isUnlocked('gradient') ? 'disabled' : ''}>
+            <input type="text" name="gradient" id="gradientInput" value="${prefs.gradient || ''}" placeholder="#ffddfc,#edd7ae" ${!isUnlocked('gradient') ? 'disabled' : ''} style="margin-left:8px;width:140px;">
           </label></div>
           <div><label>Font:<br><select name="font" id="fontSelect" ${!isUnlocked('font') ? 'disabled' : ''}>
             <option value="OpenSans" style="font-family:'Open Sans',sans-serif;"${prefs.font==='OpenSans'?' selected':''}>Open Sans</option>
