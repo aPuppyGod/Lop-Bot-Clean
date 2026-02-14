@@ -54,6 +54,11 @@ function htmlTemplate(content, opts = {}) {
       height: 56px;
       box-shadow: 0 2px 12px rgba(113, 250, 249, 0.3);
     }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 0;
+    }
     nav .logo, body[data-theme="light"] nav .logo {
       font-weight: 700;
       font-size: 1.3em;
@@ -305,20 +310,33 @@ function htmlTemplate(content, opts = {}) {
         justify-content: center;
       }
       
-      nav .logo {
+      body[data-theme="light"] nav {
+        padding: 12px;
+        height: auto;
+      }
+      
+      nav .logo, body[data-theme="light"] nav .logo {
         width: 100%;
         text-align: center;
         margin: 0 0 8px 0;
         font-size: 1.2em;
       }
       
-      nav a {
+      .nav-links {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+      }
+      
+      nav a, body[data-theme="light"] nav a {
         margin: 0 8px;
         font-size: 0.9em;
         white-space: nowrap;
       }
       
-      nav .nav-right {
+      nav .nav-right, body[data-theme="light"] nav .nav-right {
         width: 100%;
         margin: 8px 0 0 0;
         justify-content: center;
@@ -326,13 +344,13 @@ function htmlTemplate(content, opts = {}) {
         gap: 8px;
       }
       
-      nav .user {
+      nav .user, body[data-theme="light"] nav .user {
         flex-wrap: wrap;
         justify-content: center;
         font-size: 0.85em;
       }
       
-      nav .user img {
+      nav .user img, body[data-theme="light"] nav .user img {
         width: 28px;
         height: 28px;
       }
@@ -341,6 +359,11 @@ function htmlTemplate(content, opts = {}) {
         padding: 6px 10px;
         font-size: 0.85em;
         margin: 0;
+      }
+      
+      body[data-theme="light"] #themeToggle {
+        padding: 6px 10px;
+        font-size: 0.85em;
       }
       
       .container {
@@ -411,11 +434,11 @@ function htmlTemplate(content, opts = {}) {
     }
     
     @media (max-width: 480px) {
-      nav .logo {
+      nav .logo, body[data-theme="light"] nav .logo {
         font-size: 1.1em;
       }
       
-      nav a {
+      nav a, body[data-theme="light"] nav a {
         font-size: 0.85em;
         margin: 0 4px;
       }
@@ -488,10 +511,12 @@ function htmlTemplate(content, opts = {}) {
 <body data-theme="dark">
   <nav>
     <span class="logo">Lop-Bot</span>
-    <a href="/"${active==="home"?" class=active":""}>Home</a>
-    <a href="/leaderboard"${active==="leaderboard"?" class=active":""}>Leaderboard</a>
-    <a href="/lop"${active==="rankcard"?" class=active":""}>Rank Card</a>
-    ${isAdmin?'<a href="/dashboard"'+(active==="admin"?' class=active':'')+'>Admin</a>':''}
+    <div class="nav-links">
+      <a href="/"${active==="home"?" class=active":""}>Home</a>
+      <a href="/leaderboard"${active==="leaderboard"?" class=active":""}>Leaderboard</a>
+      <a href="/lop"${active==="rankcard"?" class=active":""}>Rank Card</a>
+      ${isAdmin?'<a href="/dashboard"'+(active==="admin"?' class=active':'')+'>Admin</a>':''}
+    </div>
     <span class="nav-right">
       <button id="themeToggle" onclick="toggleTheme()">☀️ Light</button>
       ${user?`<span class="user"><img src="https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64" alt="avatar" />${escapeHtml(user.username)}#${escapeHtml(user.discriminator)} <a href="/logout" class="btn" style="margin-left:10px;">Logout</a></span>`:`<a href="/login" class="btn">Login with Discord</a>`}
