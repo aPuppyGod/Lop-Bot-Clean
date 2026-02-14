@@ -804,12 +804,34 @@ function startDashboard(client) {
         if (req.query.borderglow) prefs.borderglow = req.query.borderglow;
         if (req.query.avatarframe) prefs.avatarframe = req.query.avatarframe;
       }
+      
+      // Check for preview image data (cropped image from frontend)
+      let previewImageData = null;
+      if (req.query.preview === 'true' && req.query.bgimagedata) {
+        try {
+          const decoded = decodeURIComponent(req.query.bgimagedata);
+          // Remove data:image/png;base64, prefix if present
+          const base64Data = decoded.replace(/^data:image\/\w+;base64,/, '');
+          previewImageData = Buffer.from(base64Data, 'base64');
+        } catch (e) {
+          console.error('Failed to decode preview image data:', e);
+        }
+      }
+      
       // Canvas size unified with Discord bot: 600x180
       const width = 600, height = 180;
       const canvas = createCanvas(width, height);
       const ctx = canvas.getContext("2d");
-      // Background: image > gradient > color > default, but only if unlocked
-      if (prefs.bgimage && isUnlocked("bgimage")) {
+      // Background: preview image > saved image > gradient > color > default
+      if (previewImageData) {
+        try {
+          const img = await loadImage(previewImageData);
+          ctx.drawImage(img, 0, 0, width, height);
+        } catch (e) {
+          ctx.fillStyle = prefs.bgcolor && isUnlocked("bgcolor") ? prefs.bgcolor : "#1a2a2a";
+          ctx.fillRect(0, 0, width, height);
+        }
+      } else if (prefs.bgimage && isUnlocked("bgimage")) {
         try {
           let imgPath = path.resolve(prefs.bgimage);
           const img = await loadImage(imgPath);
@@ -1273,9 +1295,48 @@ function startDashboard(client) {
           border-radius: 8px;
           overflow: hidden;
           box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+          padding: 16px;
+          background: rgba(113, 250, 249, 0.05);
         }
         #cropperContainer img {
           border-radius: 8px;
+          max-width: 100%;
+          display: block;
+        }
+        .crop-actions {
+          display: flex;
+          gap: 12px;
+          margin-top: 12px;
+          justify-content: flex-end;
+        }
+        .crop-actions button {
+          padding: 10px 20px;
+          border: none;
+          border-radius: 6px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .crop-confirm-btn {
+          background: linear-gradient(135deg, #71faf9, #2ab3b0);
+          color: #0a1e1e;
+        }
+        .crop-confirm-btn:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(113, 250, 249, 0.4);
+        }
+        .crop-cancel-btn {
+          background: #555;
+          color: #fff;
+        }
+        .crop-cancel-btn:hover {
+          background: #666;
+        }
+        #cropPreviewText {
+          font-size: 0.9em;
+          color: #71faf9;
+          margin-top: 8px;
+          font-style: italic;
         }
         .preset-colors {
           display: flex;
@@ -1423,6 +1484,22 @@ function startDashboard(client) {
           .avatar-frame-grid label > span {
             font-size: 0.75em !important;
           }
+          
+          #cropperContainer {
+            padding: 12px;
+          }
+          
+          #cropperContainer img {
+            max-height: 200px;
+          }
+          
+          .crop-actions {
+            flex-direction: column;
+          }
+          
+          .crop-actions button {
+            width: 100%;
+          }
         }
         
         .avatar-frame-grid {
@@ -1566,6 +1643,11 @@ function startDashboard(client) {
             <div id="cropperContainer" style="margin-top:16px;display:none;">
               <label style="font-weight:600;display:block;margin-bottom:8px;">Crop & Adjust Image:</label>
               <img id="cropperImage" />
+              <div class="crop-actions">
+                <button type="button" class="crop-cancel-btn" onclick="cancelCrop()">✖ Cancel</button>
+                <button type="button" class="crop-confirm-btn" onclick="confirmCrop()">✓ Confirm Crop</button>
+              </div>
+              <div id="cropPreviewText" style="display:none;">✓ Image cropped and ready to save</div>
             </div>
             <input type="hidden" name="cropX" id="cropX">
             <input type="hidden" name="cropY" id="cropY">
@@ -1651,6 +1733,53 @@ function startDashboard(client) {
       <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
       <script>
         let cropper;
+        let croppedImageData = null;
+        
+        // Cancel crop
+        function cancelCrop() {
+          if (cropper) {
+            cropper.destroy();
+            cropper = null;
+          }
+          document.getElementById('cropperContainer').style.display = 'none';
+          document.getElementById('bgimageInput').value = '';
+          document.getElementById('cropPreviewText').style.display = 'none';
+          croppedImageData = null;
+        }
+        
+        // Confirm crop
+        function confirmCrop() {
+          if (!cropper) return;
+          
+          // Get the cropped canvas
+          const canvas = cropper.getCroppedCanvas({
+            width: 600,
+            height: 180,
+            imageSmoothingQuality: 'high'
+          });
+          
+          // Store the cropped image data
+          croppedImageData = canvas.toDataURL('image/png');
+          
+          // Update preview with cropped image
+          updatePreviewWithCroppedImage(croppedImageData);
+          
+          // Show confirmation message
+          document.getElementById('cropPreviewText').style.display = 'block';
+          
+          // Destroy cropper UI
+          if (cropper) {
+            cropper.destroy();
+            cropper = null;
+          }
+          
+          // Show the cropped result
+          const img = document.getElementById('cropperImage');
+          img.src = croppedImageData;
+          img.style.maxWidth = '100%';
+          img.style.border = '2px solid #71faf9';
+          img.style.borderRadius = '6px';
+        }
         
         // Gradient color pickers
         const gradColor1 = document.getElementById('gradColor1');
@@ -1775,11 +1904,21 @@ function startDashboard(client) {
           const avatarframe = form.querySelector('[name="avatarframe"]:checked')?.value;
           if (avatarframe) params.set('avatarframe', avatarframe);
           
+          // If there's a confirmed cropped image, include it
+          if (croppedImageData) {
+            params.set('bgimagedata', encodeURIComponent(croppedImageData));
+          }
+          
           // Update preview image
           const previewImg = document.getElementById('rankcardPreview');
           if (previewImg) {
             previewImg.src = '/lop/rankcard/image?' + params.toString();
           }
+        }
+        
+        // Update preview with cropped image
+        function updatePreviewWithCroppedImage(imageData) {
+          updatePreview();
         }
         
         // Attach live preview listeners
@@ -1809,6 +1948,29 @@ function startDashboard(client) {
               updatePreview();
             });
           }
+          
+          // Handle form submission with cropped image
+          form.addEventListener('submit', function(e) {
+            if (croppedImageData) {
+              // Convert base64 to blob
+              const base64Data = croppedImageData.split(',')[1];
+              const byteString = atob(base64Data);
+              const ab = new ArrayBuffer(byteString.length);
+              const ia = new Uint8Array(ab);
+              for (let i = 0; i < byteString.length; i++) {
+                ia[i] = byteString.charCodeAt(i);
+              }
+              const blob = new Blob([ab], { type: 'image/png' });
+              
+              // Create a new file from the blob
+              const file = new File([blob], 'cropped-background.png', { type: 'image/png' });
+              
+              // Create a new DataTransfer to set the file
+              const dataTransfer = new DataTransfer();
+              dataTransfer.items.add(file);
+              document.getElementById('bgimageInput').files = dataTransfer.files;
+            }
+          });
         }, 100);
       </script>
       `;
@@ -1872,14 +2034,9 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
     if (isUnlocked('font') && req.body.font) update.font = req.body.font;
     if (isUnlocked('font') && req.body.fontcolor) update.fontcolor = req.body.fontcolor;
     if (isUnlocked('bgimage') && req.file) {
-      // Use crop parameters from client if provided
-      const cropX = parseInt(req.body.cropX) || 0;
-      const cropY = parseInt(req.body.cropY) || 0;
-      const cropW = parseInt(req.body.cropW) || 600;
-      const cropH = parseInt(req.body.cropH) || 180;
+      // Image is already cropped by frontend cropper, just resize to exact dimensions
       const croppedPath = req.file.path + '_cropped.png';
       await sharp(req.file.path)
-        .extract({ left: cropX, top: cropY, width: cropW, height: cropH })
         .resize(600, 180, { fit: 'cover' })
         .toFile(croppedPath);
       update.bgimage = croppedPath;
