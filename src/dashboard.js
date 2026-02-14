@@ -39,19 +39,19 @@ function htmlTemplate(content, opts = {}) {
   <style>
     body {
       font-family: 'Montserrat', Arial, sans-serif;
-      background: linear-gradient(135deg, #0a1e1e 0%, #0d2626 100%);
+      background: linear-gradient(135deg, #ffddfc 0%, #edd7ae 100%);
       margin: 0;
       padding: 0;
-      color: #f0f0f0;
+      color: #0a1e1e;
       min-height: 100vh;
     }
     nav {
-      background: linear-gradient(135deg, #ffddfc 0%, #edd7ae 100%);
+      background: linear-gradient(135deg, #71faf9 0%, #71faf9 100%);
       padding: 0 24px;
       display: flex;
       align-items: center;
       height: 56px;
-      box-shadow: 0 2px 12px rgba(255, 221, 252, 0.2);
+      box-shadow: 0 2px 12px rgba(113, 250, 249, 0.3);
     }
     nav .logo {
       font-weight: 700;
@@ -95,30 +95,23 @@ function htmlTemplate(content, opts = {}) {
     .container {
       max-width: 900px;
       margin: 32px auto 0 auto;
-      background: #1a2a2a;
+      background: rgba(255, 255, 255, 0.95);
       border-radius: 12px;
-      box-shadow: 0 4px 24px rgba(255, 221, 252, 0.12);
+      box-shadow: 0 8px 32px rgba(113, 250, 249, 0.2);
       padding: 32px 24px 24px 24px;
-      border: 2px solid transparent;
-      background-image: linear-gradient(#1a2a2a, #1a2a2a), linear-gradient(135deg, #ffddfc, #edd7ae);
-      background-origin: border-box;
-      background-clip: padding-box, border-box;
+      border: 2px solid rgba(113, 250, 249, 0.3);
     }
     h2 {
-      color: #ffddfc;
+      color: #71faf9;
       text-align: center;
       margin-top: 0;
-      background: linear-gradient(135deg, #ffddfc 0%, #edd7ae 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
     }
     h3 {
-      color: #71faf9;
+      color: #ffddfc;
       margin-bottom: 8px;
     }
     button, .btn {
-      background: linear-gradient(135deg, #ffddfc 0%, #edd7ae 100%);
+      background: linear-gradient(135deg, #71faf9 0%, #5fe8f7 100%);
       color: #0a1e1e;
       border: none;
       padding: 10px 18px;
@@ -129,28 +122,26 @@ function htmlTemplate(content, opts = {}) {
       font-size: 1em;
       margin: 8px 0;
       transition: all 0.3s;
-      box-shadow: 0 4px 12px rgba(255, 221, 252, 0.2);
+      box-shadow: 0 4px 12px rgba(113, 250, 249, 0.3);
     }
     button:hover, .btn:hover {
-      background: linear-gradient(135deg, #edd7ae 0%, #ffddfc 100%);
+      background: linear-gradient(135deg, #5fe8f7 0%, #71faf9 100%);
       transform: translateY(-3px);
-      box-shadow: 0 6px 20px rgba(255, 221, 252, 0.4);
+      box-shadow: 0 6px 20px rgba(113, 250, 249, 0.5);
     }
     input, select {
       padding: 7px;
-      border: 2px solid transparent;
+      border: 2px solid #71faf9;
       border-radius: 4px;
-      background: #0a1e1e;
-      background-image: linear-gradient(#0a1e1e, #0a1e1e), linear-gradient(135deg, #ffddfc, #edd7ae);
-      background-origin: border-box;
-      background-clip: padding-box, border-box;
-      color: #f0f0f0;
+      background: rgba(255, 255, 255, 0.8);
+      color: #0a1e1e;
       margin-bottom: 8px;
     }
     input:focus, select:focus {
       outline: none;
-      background-image: linear-gradient(#0a1e1e, #0a1e1e), linear-gradient(135deg, #ffddfc, #edd7ae);
-      box-shadow: 0 0 12px rgba(255, 221, 252, 0.4);
+      border-color: #ffddfc;
+      box-shadow: 0 0 12px rgba(113, 250, 249, 0.4);
+      background: white;
     }
     table {
       width: 100%;
@@ -159,13 +150,13 @@ function htmlTemplate(content, opts = {}) {
     }
     th, td {
       padding: 8px 6px;
-      border-bottom: 1px solid #2a4a4a;
+      border-bottom: 1px solid #e0e0e0;
       text-align: left;
     }
     th {
-      color: #ffddfc;
+      color: #0a1e1e;
       font-weight: 700;
-      background: #0a1e1e;
+      background: rgba(113, 250, 249, 0.2);
     }
     tr:last-child td {
       border-bottom: none;
@@ -178,18 +169,18 @@ function htmlTemplate(content, opts = {}) {
       margin: 5px 0;
     }
     a {
-      color: #ffddfc;
+      color: #71faf9;
       text-decoration: none;
       transition: color 0.2s;
     }
     a:hover {
-      color: #edd7ae;
+      color: #ffddfc;
       text-decoration: underline;
     }
     hr {
       border: 0;
       height: 2px;
-      background: linear-gradient(90deg, transparent, #ffddfc 20%, #edd7ae 50%, #ffddfc 80%, transparent);
+      background: linear-gradient(90deg, transparent, #71faf9 20%, #ffddfc 50%, #71faf9 80%, transparent);
       margin: 24px 0;
     }
     form {
@@ -496,25 +487,25 @@ function startDashboard(client) {
       ctx.fillStyle = prefs.fontcolor || "#fff";
       ctx.fillText(user?.tag || "Your Name", 170, 70);
       ctx.font = `bold 22px ${fontFamily}`;
-      ctx.fillStyle = "#ffddfc";
+      ctx.fillStyle = "#71faf9";
       ctx.fillText(`Level: ${userLevel}`, 170, 110);
       ctx.font = `16px ${fontFamily}`;
       ctx.fillStyle = "#ccc";
       ctx.fillText(`XP: ${userXp} / ${userXp + 100}`, 170, 140);
       // Progress bar
       const barX = 170, barY = 150, barW = 380, barH = 20;
-      ctx.fillStyle = "#2a4a4a";
+      ctx.fillStyle = "#e8f8f8";
       ctx.fillRect(barX, barY, barW, barH);
       const progressGrad = ctx.createLinearGradient(barX, barY, barX + barW * 0.1, barY);
-      progressGrad.addColorStop(0, "#ffddfc");
-      progressGrad.addColorStop(1, "#edd7ae");
+      progressGrad.addColorStop(0, "#71faf9");
+      progressGrad.addColorStop(1, "#2ab3b0");
       ctx.fillStyle = progressGrad;
       ctx.fillRect(barX, barY, barW * 0.1, barH);
-      ctx.strokeStyle = "#0a1e1e";
+      ctx.strokeStyle = "#71faf9";
       ctx.lineWidth = 2;
       ctx.strokeRect(barX, barY, barW, barH);
       ctx.font = `bold 16px ${fontFamily}`;
-      ctx.fillStyle = "#f0f0f0";
+      ctx.fillStyle = "#0a1e1e";
       ctx.fillText(`0 / 100 XP this level`, barX + 10, barY + 16);
       // Output as PNG
       res.setHeader("Content-Type", "image/png");
