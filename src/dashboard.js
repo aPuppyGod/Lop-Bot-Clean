@@ -441,14 +441,14 @@ function startDashboard(client) {
     session({
       name: "lop_dashboard_session",
       secret: process.env.DASHBOARD_SESSION_SECRET || "change-me",
-      resave: false,
-      saveUninitialized: false,
+      resave: true,
+      saveUninitialized: true,
       rolling: true,
       cookie: {
         httpOnly: true,
         sameSite: "lax",
         secure: false, // set true only when behind HTTPS and configured correctly
-        maxAge: 7 * 24 * 60 * 60 * 1000
+        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days instead of 7 days
       }
     })
   );
