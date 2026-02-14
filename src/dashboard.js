@@ -39,39 +39,39 @@ function htmlTemplate(content, opts = {}) {
   <style>
     body {
       font-family: 'Montserrat', Arial, sans-serif;
-      background: linear-gradient(135deg, #23272A 0%, #2C2F33 100%);
+      background: linear-gradient(135deg, #0a1e1e 0%, #0d2626 100%);
       margin: 0;
       padding: 0;
-      color: #eee;
+      color: #f0f0f0;
       min-height: 100vh;
     }
     nav {
-      background: #18191c;
+      background: #ffddfc;
       padding: 0 24px;
       display: flex;
       align-items: center;
       height: 56px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
     }
     nav .logo {
       font-weight: 700;
       font-size: 1.3em;
-      color: #FFD700;
+      color: #0a1e1e;
       margin-right: 32px;
       letter-spacing: 1px;
     }
     nav a {
-      color: #eee;
+      color: #0a1e1e;
       text-decoration: none;
       margin-right: 24px;
-      font-weight: 500;
+      font-weight: 600;
       transition: color 0.2s;
       padding: 4px 0;
       border-bottom: 2px solid transparent;
     }
     nav a.active, nav a:hover {
-      color: #FFD700;
-      border-bottom: 2px solid #FFD700;
+      color: #71faf9;
+      border-bottom: 2px solid #71faf9;
     }
     nav .nav-right {
       margin-left: auto;
@@ -83,34 +83,36 @@ function htmlTemplate(content, opts = {}) {
       align-items: center;
       gap: 8px;
       font-size: 0.97em;
+      color: #0a1e1e;
     }
     nav .user img {
       width: 32px;
       height: 32px;
       border-radius: 50%;
-      border: 2px solid #FFD700;
+      border: 2px solid #71faf9;
       background: #444;
     }
     .container {
       max-width: 900px;
       margin: 32px auto 0 auto;
-      background: #23272A;
+      background: #1a2a2a;
       border-radius: 12px;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+      box-shadow: 0 4px 24px rgba(113, 250, 249, 0.1);
       padding: 32px 24px 24px 24px;
+      border: 1px solid rgba(113, 250, 249, 0.2);
     }
     h2 {
-      color: #FFD700;
+      color: #71faf9;
       text-align: center;
       margin-top: 0;
     }
     h3 {
-      color: #43B581;
+      color: #ffddfc;
       margin-bottom: 8px;
     }
     button, .btn {
-      background-color: #FFD700;
-      color: #23272A;
+      background-color: #71faf9;
+      color: #0a1e1e;
       border: none;
       padding: 10px 18px;
       border-radius: 5px;
@@ -119,18 +121,25 @@ function htmlTemplate(content, opts = {}) {
       font-weight: 600;
       font-size: 1em;
       margin: 8px 0;
-      transition: background 0.2s;
+      transition: all 0.2s;
     }
     button:hover, .btn:hover {
-      background-color: #bfa100;
+      background-color: #ffddfc;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(113, 250, 249, 0.3);
     }
     input, select {
       padding: 7px;
-      border: 1px solid #FFD700;
+      border: 1px solid #71faf9;
       border-radius: 4px;
-      background: #18191c;
-      color: #eee;
+      background: #0a1e1e;
+      color: #f0f0f0;
       margin-bottom: 8px;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #ffddfc;
+      box-shadow: 0 0 8px rgba(255, 221, 252, 0.3);
     }
     table {
       width: 100%;
@@ -139,13 +148,13 @@ function htmlTemplate(content, opts = {}) {
     }
     th, td {
       padding: 8px 6px;
-      border-bottom: 1px solid #333;
+      border-bottom: 1px solid #2a4a4a;
       text-align: left;
     }
     th {
-      color: #FFD700;
+      color: #71faf9;
       font-weight: 700;
-      background: #18191c;
+      background: #0a1e1e;
     }
     tr:last-child td {
       border-bottom: none;
@@ -158,16 +167,18 @@ function htmlTemplate(content, opts = {}) {
       margin: 5px 0;
     }
     a {
-      color: #FFD700;
+      color: #71faf9;
       text-decoration: none;
+      transition: color 0.2s;
     }
     a:hover {
+      color: #ffddfc;
       text-decoration: underline;
     }
     hr {
       border: 0;
       height: 1px;
-      background: linear-gradient(to right, transparent, #FFD700, transparent);
+      background: linear-gradient(to right, transparent, #71faf9, transparent);
       margin: 24px 0;
     }
     form {
@@ -380,7 +391,7 @@ function startDashboard(client) {
           const img = await loadImage(imgPath);
           ctx.drawImage(img, 0, 0, width, height);
         } catch (e) {
-          ctx.fillStyle = prefs.bgcolor && isUnlocked("bgcolor") ? prefs.bgcolor : "#23272A";
+          ctx.fillStyle = prefs.bgcolor && isUnlocked("bgcolor") ? prefs.bgcolor : "#1a2a2a";
           ctx.fillRect(0, 0, width, height);
         }
       } else if (prefs.gradient && isUnlocked("gradient")) {
@@ -391,11 +402,11 @@ function startDashboard(client) {
           ctx.fillStyle = grad;
           ctx.fillRect(0, 0, width, height);
         } else {
-          ctx.fillStyle = prefs.bgcolor && isUnlocked("bgcolor") ? prefs.bgcolor : "#23272A";
+          ctx.fillStyle = prefs.bgcolor && isUnlocked("bgcolor") ? prefs.bgcolor : "#1a2a2a";
           ctx.fillRect(0, 0, width, height);
         }
       } else {
-        ctx.fillStyle = prefs.bgcolor && isUnlocked("bgcolor") ? prefs.bgcolor : "#23272A";
+        ctx.fillStyle = prefs.bgcolor && isUnlocked("bgcolor") ? prefs.bgcolor : "#1a2a2a";
         ctx.fillRect(0, 0, width, height);
       }
       // Font (only if unlocked)
@@ -474,22 +485,22 @@ function startDashboard(client) {
       ctx.fillStyle = prefs.fontcolor || "#fff";
       ctx.fillText(user?.tag || "Your Name", 170, 70);
       ctx.font = `bold 22px ${fontFamily}`;
-      ctx.fillStyle = "#FFD700";
+      ctx.fillStyle = "#71faf9";
       ctx.fillText(`Level: ${userLevel}`, 170, 110);
       ctx.font = `16px ${fontFamily}`;
-      ctx.fillStyle = "#aaa";
+      ctx.fillStyle = "#ccc";
       ctx.fillText(`XP: ${userXp} / ${userXp + 100}`, 170, 140);
       // Progress bar
       const barX = 170, barY = 150, barW = 380, barH = 20;
-      ctx.fillStyle = "#444";
+      ctx.fillStyle = "#2a4a4a";
       ctx.fillRect(barX, barY, barW, barH);
-      ctx.fillStyle = "#43B581";
+      ctx.fillStyle = "#ffddfc";
       ctx.fillRect(barX, barY, barW * 0.1, barH);
-      ctx.strokeStyle = "#222";
+      ctx.strokeStyle = "#0a1e1e";
       ctx.lineWidth = 2;
       ctx.strokeRect(barX, barY, barW, barH);
       ctx.font = `bold 16px ${fontFamily}`;
-      ctx.fillStyle = "#fff";
+      ctx.fillStyle = "#f0f0f0";
       ctx.fillText(`0 / 100 XP this level`, barX + 10, barY + 16);
       // Output as PNG
       res.setHeader("Content-Type", "image/png");
@@ -641,11 +652,11 @@ function startDashboard(client) {
       <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700|Open+Sans:400,700|Arial|Comic+Sans+MS|Times+New+Roman|Roboto|Lobster|Pacifico|Oswald|Raleway|Bebas+Neue|Merriweather|Nunito|Poppins|Quicksand|Source+Code+Pro|Caveat|Indie+Flower|Fira+Sans|Lato|Playfair+Display|Abril+Fatface|Anton|Bangers|Dancing+Script|Permanent+Marker|PT+Serif|Rubik|Satisfy|Teko|Varela+Round|Zilla+Slab&display=swap" rel="stylesheet">
       <form id="customizeForm" method="post" action="/lop/customize" enctype="multipart/form-data">
         <div style="display:flex;flex-wrap:wrap;gap:18px;">
-          <div><label>Background Color:<br><input type="color" name="bgcolor" value="${prefs.bgcolor || '#23272A'}" ${!isUnlocked('bgcolor') ? 'disabled' : ''}></label></div>
+          <div><label>Background Color:<br><input type="color" name="bgcolor" value="${prefs.bgcolor || '#1a2a2a'}" ${!isUnlocked('bgcolor') ? 'disabled' : ''}></label></div>
           <div><label>Gradient:<br>
-            <input type="color" id="gradColor1" value="${prefs.gradient?.split(',')[0] || '#23272A'}" ${!isUnlocked('gradient') ? 'disabled' : ''}>
-            <input type="color" id="gradColor2" value="${prefs.gradient?.split(',')[1] || '#FFD700'}" ${!isUnlocked('gradient') ? 'disabled' : ''}>
-            <input type="text" name="gradient" id="gradientInput" value="${prefs.gradient || ''}" placeholder="#23272A,#FFD700" ${!isUnlocked('gradient') ? 'disabled' : ''} style="margin-left:8px;width:120px;">
+            <input type="color" id="gradColor1" value="${prefs.gradient?.split(',')[0] || '#1a2a2a'}" ${!isUnlocked('gradient') ? 'disabled' : ''}>
+            <input type="color" id="gradColor2" value="${prefs.gradient?.split(',')[1] || '#71faf9'}" ${!isUnlocked('gradient') ? 'disabled' : ''}>
+            <input type="text" name="gradient" id="gradientInput" value="${prefs.gradient || ''}" placeholder="#1a2a2a,#71faf9" ${!isUnlocked('gradient') ? 'disabled' : ''} style="margin-left:8px;width:140px;">
           </label></div>
           <div><label>Font:<br><select name="font" id="fontSelect" ${!isUnlocked('font') ? 'disabled' : ''}>
             <option value="OpenSans" style="font-family:'Open Sans',sans-serif;"${prefs.font==='OpenSans'?' selected':''}>Open Sans</option>
