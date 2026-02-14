@@ -423,15 +423,106 @@ function startDashboard(client) {
       await guild.members.fetch().catch(() => {});
       const leaderboard = rows.map((r, i) => {
         const member = guild.members.cache.get(r.user_id);
-        const name = member?.user?.tag || `<@${r.user_id}>`;
-        return `<tr><td>#${i+1}</td><td>${name}</td><td>${r.level}</td><td>${r.xp}</td></tr>`;
+        const displayName = member?.nickname || member?.user?.username || `User ${r.user_id}`;
+        const avatarUrl = member?.user?.displayAvatarURL({ extension: 'png', size: 64 }) || '';
+        const badge = i === 0 ? '👑' : i === 1 ? '🥈' : i === 2 ? '🥉' : '';
+        const medalColor = i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : 'transparent';
+        return `
+          <tr class="lb-row" style="background: linear-gradient(90deg, ${medalColor}15 0%, transparent 100%);">
+            <td class="lb-rank" style="font-weight:700;color:${medalColor};">${badge} #${i+1}</td>
+            <td class="lb-user">
+              ${avatarUrl ? `<img src="${avatarUrl}" alt="${displayName}" class="lb-avatar">` : '<div class="lb-avatar-placeholder">👤</div>'}
+              <span>${escapeHtml(displayName)}</span>
+            </td>
+            <td class="lb-level"><span style="background:linear-gradient(135deg,#71faf9,#ffddfc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:700;">Lvl ${r.level}</span></td>
+            <td class="lb-xp"><span style="color:#71faf9;font-weight:600;">${r.xp.toLocaleString()}</span></td>
+          </tr>
+        `;
       }).join("");
       res.send(htmlTemplate(`
         <h2>Leaderboard</h2>
-        <table>
-          <tr><th>Rank</th><th>User</th><th>Level</th><th>XP</th></tr>
-          ${leaderboard}
-        </table>
+        <style>
+          .leaderboard-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+          }
+          body[data-theme="dark"] .leaderboard-container {
+            background: rgba(0, 0, 0, 0.2);
+          }
+          .leaderboard-container table {
+            width: 100%;
+          }
+          .lb-row {
+            transition: all 0.2s ease;
+            border-bottom: 1px solid rgba(113, 250, 249, 0.2);
+          }
+          body[data-theme="dark"] .lb-row {
+            border-bottom-color: rgba(255, 221, 252, 0.15);
+          }
+          .lb-row:hover {
+            background: linear-gradient(90deg, rgba(113, 250, 249, 0.1) 0%, rgba(255, 221, 252, 0.05) 100%) !important;
+            transform: translateX(4px);
+          }
+          .lb-rank {
+            text-align: center;
+            width: 80px;
+            font-size: 1.1em;
+          }
+          .lb-user {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 12px !important;
+          }
+          .lb-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: 2px solid #71faf9;
+            object-fit: cover;
+            box-shadow: 0 2px 8px rgba(113, 250, 249, 0.4);
+          }
+          body[data-theme="dark"] .lb-avatar {
+            border-color: #ffddfc;
+            box-shadow: 0 2px 8px rgba(255, 221, 252, 0.4);
+          }
+          .lb-avatar-placeholder {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: gradient(135deg, #71faf9, #ffddfc);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8em;
+            border: 2px solid #71faf9;
+          }
+          .lb-level, .lb-xp {
+            text-align: right;
+            width: 140px;
+          }
+          .lb-level {
+            font-size: 0.95em;
+          }
+        </style>
+        <div class="leaderboard-container">
+          <table style="border-collapse: collapse;">
+            <thead>
+              <tr style="background: linear-gradient(135deg, #71faf9 0%, #ffddfc 100%); color: #0a1e1e;">
+                <th style="text-align:center;width:80px;padding:12px;">Rank</th>
+                <th style="padding:12px;">Player</th>
+                <th style="text-align:right;width:140px;padding:12px;">Level</th>
+                <th style="text-align:right;width:140px;padding:12px;">XP</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${leaderboard}
+            </tbody>
+          </table>
+        </div>
       `, { ...getTemplateOpts(req), active: "leaderboard" }));
     });
 
@@ -792,55 +883,299 @@ function startDashboard(client) {
       formHtml = `
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" />
       <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700|Open+Sans:400,700|Arial|Comic+Sans+MS|Times+New+Roman|Roboto|Lobster|Pacifico|Oswald|Raleway|Bebas+Neue|Merriweather|Nunito|Poppins|Quicksand|Source+Code+Pro|Caveat|Indie+Flower|Fira+Sans|Lato|Playfair+Display|Abril+Fatface|Anton|Bangers|Dancing+Script|Permanent+Marker|PT+Serif|Rubik|Satisfy|Teko|Varela+Round|Zilla+Slab&display=swap" rel="stylesheet">
-      <form id="customizeForm" method="post" action="/lop/customize" enctype="multipart/form-data">
-        <div style="display:flex;flex-wrap:wrap;gap:18px;">
-          <div><label>Background Color:<br><input type="color" name="bgcolor" value="${prefs.bgcolor || '#1a2a2a'}" ${!isUnlocked('bgcolor') ? 'disabled' : ''}></label></div>
-          <div><label>Gradient:<br>
-            <input type="color" id="gradColor1" value="${prefs.gradient?.split(',')[0] || '#ffddfc'}" ${!isUnlocked('gradient') ? 'disabled' : ''}>
-            <input type="color" id="gradColor2" value="${prefs.gradient?.split(',')[1] || '#edd7ae'}" ${!isUnlocked('gradient') ? 'disabled' : ''}>
-            <input type="text" name="gradient" id="gradientInput" value="${prefs.gradient || ''}" placeholder="#ffddfc,#edd7ae" ${!isUnlocked('gradient') ? 'disabled' : ''} style="margin-left:8px;width:140px;">
-          </label></div>
-          <div><label>Font:<br><select name="font" id="fontSelect" ${!isUnlocked('font') ? 'disabled' : ''}>
-            <option value="OpenSans" style="font-family:'Open Sans',sans-serif;"${prefs.font==='OpenSans'?' selected':''}>Open Sans</option>
-            <option value="Arial" style="font-family:Arial;"${prefs.font==='Arial'?' selected':''}>Arial</option>
-            <option value="ComicSansMS" style="font-family:'Comic Sans MS',cursive;"${prefs.font==='ComicSansMS'?' selected':''}>Comic Sans MS</option>
-            <option value="TimesNewRoman" style="font-family:'Times New Roman',serif;"${prefs.font==='TimesNewRoman'?' selected':''}>Times New Roman</option>
-            <option value="Roboto" style="font-family:'Roboto',sans-serif;"${prefs.font==='Roboto'?' selected':''}>Roboto</option>
-            <option value="Lobster" style="font-family:'Lobster',cursive;"${prefs.font==='Lobster'?' selected':''}>Lobster</option>
-            <option value="Pacifico" style="font-family:'Pacifico',cursive;"${prefs.font==='Pacifico'?' selected':''}>Pacifico</option>
-            <option value="Oswald" style="font-family:'Oswald',sans-serif;"${prefs.font==='Oswald'?' selected':''}>Oswald</option>
-            <option value="Raleway" style="font-family:'Raleway',sans-serif;"${prefs.font==='Raleway'?' selected':''}>Raleway</option>
-            <option value="BebasNeue" style="font-family:'Bebas Neue',sans-serif;"${prefs.font==='BebasNeue'?' selected':''}>Bebas Neue</option>
-            <option value="Merriweather" style="font-family:'Merriweather',serif;"${prefs.font==='Merriweather'?' selected':''}>Merriweather</option>
-            <option value="Nunito" style="font-family:'Nunito',sans-serif;"${prefs.font==='Nunito'?' selected':''}>Nunito</option>
-            <option value="Poppins" style="font-family:'Poppins',sans-serif;"${prefs.font==='Poppins'?' selected':''}>Poppins</option>
-            <option value="Quicksand" style="font-family:'Quicksand',sans-serif;"${prefs.font==='Quicksand'?' selected':''}>Quicksand</option>
-            <option value="SourceCodePro" style="font-family:'Source Code Pro',monospace;"${prefs.font==='SourceCodePro'?' selected':''}>Source Code Pro</option>
-            <option value="Caveat" style="font-family:'Caveat',cursive;"${prefs.font==='Caveat'?' selected':''}>Caveat</option>
-            <option value="IndieFlower" style="font-family:'Indie Flower',cursive;"${prefs.font==='IndieFlower'?' selected':''}>Indie Flower</option>
-            <option value="FiraSans" style="font-family:'Fira Sans',sans-serif;"${prefs.font==='FiraSans'?' selected':''}>Fira Sans</option>
-            <option value="Lato" style="font-family:'Lato',sans-serif;"${prefs.font==='Lato'?' selected':''}>Lato</option>
-            <option value="PlayfairDisplay" style="font-family:'Playfair Display',serif;"${prefs.font==='PlayfairDisplay'?' selected':''}>Playfair Display</option>
-            <option value="AbrilFatface" style="font-family:'Abril Fatface',cursive;"${prefs.font==='AbrilFatface'?' selected':''}>Abril Fatface</option>
-            <option value="Anton" style="font-family:'Anton',sans-serif;"${prefs.font==='Anton'?' selected':''}>Anton</option>
-            <option value="Bangers" style="font-family:'Bangers',cursive;"${prefs.font==='Bangers'?' selected':''}>Bangers</option>
-            <option value="DancingScript" style="font-family:'Dancing Script',cursive;"${prefs.font==='DancingScript'?' selected':''}>Dancing Script</option>
-            <option value="PermanentMarker" style="font-family:'Permanent Marker',cursive;"${prefs.font==='PermanentMarker'?' selected':''}>Permanent Marker</option>
-            <option value="PTSerif" style="font-family:'PT Serif',serif;"${prefs.font==='PTSerif'?' selected':''}>PT Serif</option>
-            <option value="Rubik" style="font-family:'Rubik',sans-serif;"${prefs.font==='Rubik'?' selected':''}>Rubik</option>
-            <option value="Satisfy" style="font-family:'Satisfy',cursive;"${prefs.font==='Satisfy'?' selected':''}>Satisfy</option>
-            <option value="Teko" style="font-family:'Teko',sans-serif;"${prefs.font==='Teko'?' selected':''}>Teko</option>
-            <option value="VarelaRound" style="font-family:'Varela Round',sans-serif;"${prefs.font==='VarelaRound'?' selected':''}>Varela Round</option>
-            <option value="ZillaSlab" style="font-family:'Zilla Slab',serif;"${prefs.font==='ZillaSlab'?' selected':''}>Zilla Slab</option>
-          </select></label></div>
-          <div><label>Font Color:<br><input type="color" name="fontcolor" value="${prefs.fontcolor || '#ffffff'}" ${!isUnlocked('font') ? 'disabled' : ''}></label></div>
-          </select></label></div>
-          <div>
-            <label>Background Image:<br>
-              <input type="file" id="bgimageInput" name="bgimage" accept="image/*" ${!isUnlocked('bgimage') ? 'disabled' : ''}>
-            </label>
-            <div id="cropperContainer" style="margin-top:10px;display:none;">
-              <img id="cropperImage" style="max-width:100%;border-radius:8px;box-shadow:0 2px 8px #0002;" />
+      <style>
+        .customize-form {
+          background: rgba(255,255,255,0.05);
+          border-radius: 12px;
+          padding: 24px;
+          margin-top: 20px;
+          backdrop-filter: blur(10px);
+        }
+        body[data-theme="dark"] .customize-form {
+          background: rgba(0,0,0,0.2);
+        }
+        .customize-section {
+          margin-bottom: 28px;
+          padding-bottom: 20px;
+          border-bottom: 1px solid rgba(113,250,249,0.2);
+        }
+        body[data-theme="dark"] .customize-section {
+          border-bottom-color: rgba(255,221,252,0.15);
+        }
+        .customize-section:last-child {
+          border-bottom: none;
+          margin-bottom: 0;
+          padding-bottom: 0;
+        }
+        .section-title {
+          font-weight: 700;
+          font-size: 1.1em;
+          margin-bottom: 14px;
+          color: #71faf9;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        body[data-theme="dark"] .section-title {
+          color: #ffddfc;
+        }
+        .customize-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          gap: 16px;
+          align-items: end;
+        }
+        .form-group {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .form-group label {
+          font-weight: 600;
+          font-size: 0.95em;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        .feature-badge {
+          font-size: 0.75em;
+          padding: 2px 8px;
+          border-radius: 4px;
+          background: rgba(113,250,249,0.2);
+          color: #71faf9;
+        }
+        body[data-theme="dark"] .feature-badge {
+          background: rgba(255,221,252,0.2);
+          color: #ffddfc;
+        }
+        .feature-badge.locked {
+          background: rgba(184,134,11,0.2);
+          color: #b8860b;
+        }
+        .customize-form input[type="color"],
+        .customize-form input[type="text"],
+        .customize-form select,
+        .customize-form input[type="number"] {
+          padding: 8px 12px;
+          border: 2px solid rgba(113,250,249,0.3);
+          border-radius: 6px;
+          background: rgba(255,255,255,0.95);
+          color: #0a1e1e;
+          font-size: 0.95em;
+          transition: all 0.2s;
+        }
+        body[data-theme="dark"] .customize-form input[type="color"],
+        body[data-theme="dark"] .customize-form input[type="text"],
+        body[data-theme="dark"] .customize-form select,
+        body[data-theme="dark"] .customize-form input[type="number"] {
+          background: rgba(0,0,0,0.3);
+          color: #f0f0f0;
+          border-color: rgba(255,221,252,0.3);
+        }
+        .customize-form input[type="color"]:disabled,
+        .customize-form select:disabled,
+        .customize-form input:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+        .customize-form input:focus,
+        .customize-form select:focus {
+          outline: none;
+          border-color: #71faf9;
+          box-shadow: 0 0 8px rgba(113,250,249,0.4);
+        }
+        body[data-theme="dark"] .customize-form input:focus,
+        body[data-theme="dark"] .customize-form select:focus {
+          border-color: #ffddfc;
+          box-shadow: 0 0 8px rgba(255,221,252,0.4);
+        }
+        .image-upload-area {
+          border: 2px dashed rgba(113,250,249,0.4);
+          border-radius: 8px;
+          padding: 20px;
+          text-align: center;
+          cursor: pointer;
+          transition: all 0.2s;
+          background: rgba(113,250,249,0.05);
+        }
+        body[data-theme="dark"] .image-upload-area {
+          border-color: rgba(255,221,252,0.4);
+          background: rgba(255,221,252,0.05);
+        }
+        .image-upload-area:hover {
+          border-color: #71faf9;
+          background: rgba(113,250,249,0.1);
+        }
+        body[data-theme="dark"] .image-upload-area:hover {
+          border-color: #ffddfc;
+          background: rgba(255,221,252,0.1);
+        }
+        .image-upload-area.dragover {
+          border-color: #71faf9;
+          background: rgba(113,250,249,0.15);
+          transform: scale(1.02);
+        }
+        #cropperContainer {
+          margin-top: 16px;
+          border-radius: 8px;
+          overflow: hidden;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        #cropperContainer img {
+          border-radius: 8px;
+        }
+        .preset-colors {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+          margin-top: 8px;
+        }
+        .preset-btn {
+          width: 40px;
+          height: 40px;
+          border-radius: 6px;
+          border: 2px solid #ccc;
+          cursor: pointer;
+          transition: all 0.2s;
+          padding: 0;
+          font-size: 0;
+        }
+        .preset-btn:hover {
+          transform: scale(1.1);
+          border-color: #71faf9;
+        }
+        .customize-form button[type="submit"] {
+          background: linear-gradient(135deg, #71faf9, #ffddfc);
+          color: #0a1e1e;
+          border: none;
+          padding: 12px 28px;
+          border-radius: 8px;
+          font-weight: 700;
+          cursor: pointer;
+          font-size: 1em;
+          transition: all 0.2s;
+          box-shadow: 0 4px 12px rgba(113,250,249,0.3);
+          margin-top: 24px;
+        }
+        .customize-form button[type="submit"]:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(113,250,249,0.5);
+        }
+        .customize-form button[type="submit"]:active {
+          transform: translateY(0);
+        }
+        .reset-btn {
+          background: rgba(184,134,11,0.2);
+          color: #b8860b;
+          border: 1px solid #b8860b;
+          padding: 8px 16px;
+          border-radius: 6px;
+          font-weight: 600;
+          cursor: pointer;
+          font-size: 0.9em;
+          transition: all 0.2s;
+        }
+        .reset-btn:hover {
+          background: rgba(184,134,11,0.3);
+        }
+      </style>
+      <form id="customizeForm" class="customize-form" method="post" action="/lop/customize" enctype="multipart/form-data">
+        
+        <!-- Colors Section -->
+        <div class="customize-section">
+          <div class="section-title">
+            🎨 Colors & Background
+            ${!isUnlocked('bgcolor') && !isUnlocked('gradient') ? '<span class="feature-badge locked">Locked at Lvl 1</span>' : '<span class="feature-badge">Unlocked</span>'}
+          </div>
+          <div class="customize-grid">
+            <div class="form-group">
+              <label>Background Color</label>
+              <input type="color" name="bgcolor" value="${prefs.bgcolor || '#1a2a2a'}" ${!isUnlocked('bgcolor') ? 'disabled' : ''}>
+            </div>
+            <div style="grid-column: 1/-1;">
+              <label style="font-weight:600;margin-bottom:8px;display:block;">Gradient Colors <span class="feature-badge">${isUnlocked('gradient') ? 'Lvl ' + unlocks.gradient : 'Locked'}</span></label>
+              <div style="display:grid;grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));gap:8px;">
+                <div>
+                  <label style="font-size:0.85em;font-weight:600;">Start Color</label>
+                  <input type="color" id="gradColor1" class="grad-picker" value="${prefs.gradient?.split(',')[0] || '#ffddfc'}" ${!isUnlocked('gradient') ? 'disabled' : ''}>
+                </div>
+                <div>
+                  <label style="font-size:0.85em;font-weight:600;">End Color</label>
+                  <input type="color" id="gradColor2" class="grad-picker" value="${prefs.gradient?.split(',')[1] || '#edd7ae'}" ${!isUnlocked('gradient') ? 'disabled' : ''}>
+                </div>
+              </div>
+              <input type="hidden" name="gradient" id="gradientInput" value="${prefs.gradient || ''}">
+            </div>
+          </div>
+        </div>
+
+        <!-- Font Section -->
+        <div class="customize-section">
+          <div class="section-title">
+            ✏️ Text Styling
+            ${!isUnlocked('font') ? '<span class="feature-badge locked">Locked at Lvl ' + unlocks.font + '</span>' : '<span class="feature-badge">Lvl ' + unlocks.font + '+</span>'}
+          </div>
+          <div class="customize-grid">
+            <div class="form-group">
+              <label>Font Family</label>
+              <select name="font" id="fontSelect" ${!isUnlocked('font') ? 'disabled' : ''}>
+                <option value="OpenSans" style="font-family:'Open Sans',sans-serif;"${prefs.font==='OpenSans'?' selected':''}>Open Sans</option>
+                <option value="Arial" style="font-family:Arial;"${prefs.font==='Arial'?' selected':''}>Arial</option>
+                <option value="ComicSansMS" style="font-family:'Comic Sans MS',cursive;"${prefs.font==='ComicSansMS'?' selected':''}>Comic Sans MS</option>
+                <option value="TimesNewRoman" style="font-family:'Times New Roman',serif;"${prefs.font==='TimesNewRoman'?' selected':''}>Times New Roman</option>
+                <option value="Roboto" style="font-family:'Roboto',sans-serif;"${prefs.font==='Roboto'?' selected':''}>Roboto</option>
+                <option value="Lobster" style="font-family:'Lobster',cursive;"${prefs.font==='Lobster'?' selected':''}>Lobster</option>
+                <option value="Pacifico" style="font-family:'Pacifico',cursive;"${prefs.font==='Pacifico'?' selected':''}>Pacifico</option>
+                <option value="Oswald" style="font-family:'Oswald',sans-serif;"${prefs.font==='Oswald'?' selected':''}>Oswald</option>
+                <option value="Raleway" style="font-family:'Raleway',sans-serif;"${prefs.font==='Raleway'?' selected':''}>Raleway</option>
+                <option value="BebasNeue" style="font-family:'Bebas Neue',sans-serif;"${prefs.font==='BebasNeue'?' selected':''}>Bebas Neue</option>
+                <option value="Merriweather" style="font-family:'Merriweather',serif;"${prefs.font==='Merriweather'?' selected':''}>Merriweather</option>
+                <option value="Nunito" style="font-family:'Nunito',sans-serif;"${prefs.font==='Nunito'?' selected':''}>Nunito</option>
+                <option value="Poppins" style="font-family:'Poppins',sans-serif;"${prefs.font==='Poppins'?' selected':''}>Poppins</option>
+                <option value="Quicksand" style="font-family:'Quicksand',sans-serif;"${prefs.font==='Quicksand'?' selected':''}>Quicksand</option>
+                <option value="SourceCodePro" style="font-family:'Source Code Pro',monospace;"${prefs.font==='SourceCodePro'?' selected':''}>Source Code Pro</option>
+                <option value="Caveat" style="font-family:'Caveat',cursive;"${prefs.font==='Caveat'?' selected':''}>Caveat</option>
+                <option value="IndieFlower" style="font-family:'Indie Flower',cursive;"${prefs.font==='IndieFlower'?' selected':''}>Indie Flower</option>
+                <option value="FiraSans" style="font-family:'Fira Sans',sans-serif;"${prefs.font==='FiraSans'?' selected':''}>Fira Sans</option>
+                <option value="Lato" style="font-family:'Lato',sans-serif;"${prefs.font==='Lato'?' selected':''}>Lato</option>
+                <option value="PlayfairDisplay" style="font-family:'Playfair Display',serif;"${prefs.font==='PlayfairDisplay'?' selected':''}>Playfair Display</option>
+                <option value="AbrilFatface" style="font-family:'Abril Fatface',cursive;"${prefs.font==='AbrilFatface'?' selected':''}>Abril Fatface</option>
+                <option value="Anton" style="font-family:'Anton',sans-serif;"${prefs.font==='Anton'?' selected':''}>Anton</option>
+                <option value="Bangers" style="font-family:'Bangers',cursive;"${prefs.font==='Bangers'?' selected':''}>Bangers</option>
+                <option value="DancingScript" style="font-family:'Dancing Script',cursive;"${prefs.font==='DancingScript'?' selected':''}>Dancing Script</option>
+                <option value="PermanentMarker" style="font-family:'Permanent Marker',cursive;"${prefs.font==='PermanentMarker'?' selected':''}>Permanent Marker</option>
+                <option value="PTSerif" style="font-family:'PT Serif',serif;"${prefs.font==='PTSerif'?' selected':''}>PT Serif</option>
+                <option value="Rubik" style="font-family:'Rubik',sans-serif;"${prefs.font==='Rubik'?' selected':''}>Rubik</option>
+                <option value="Satisfy" style="font-family:'Satisfy',cursive;"${prefs.font==='Satisfy'?' selected':''}>Satisfy</option>
+                <option value="Teko" style="font-family:'Teko',sans-serif;"${prefs.font==='Teko'?' selected':''}>Teko</option>
+                <option value="VarelaRound" style="font-family:'Varela Round',sans-serif;"${prefs.font==='VarelaRound'?' selected':''}>Varela Round</option>
+                <option value="ZillaSlab" style="font-family:'Zilla Slab',serif;"${prefs.font==='ZillaSlab'?' selected':''}>Zilla Slab</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Font Color</label>
+              <input type="color" name="fontcolor" value="${prefs.fontcolor || '#ffffff'}" ${!isUnlocked('font') ? 'disabled' : ''}>
+            </div>
+          </div>
+        </div>
+
+        <!-- Image Section -->
+        <div class="customize-section">
+          <div class="section-title">
+            🖼️ Background Image
+            ${!isUnlocked('bgimage') ? '<span class="feature-badge locked">Locked at Lvl ' + unlocks.bgimage + '</span>' : '<span class="feature-badge">Lvl ' + unlocks.bgimage + '+</span>'}
+          </div>
+          <div class="form-group" style="grid-column: 1/-1;">
+            <label>Upload Image (600x180 pixels recommended)</label>
+            <div class="image-upload-area" id="dropArea" ${!isUnlocked('bgimage') ? 'style="opacity:0.5;cursor:not-allowed;"' : ''}>
+              <div style="font-size:2em;margin-bottom:8px;">📤</div>
+              <div><strong>Drag & drop your image here</strong></div>
+              <div style="font-size:0.85em;opacity:0.7;margin-top:4px;">or click to browse</div>
+              <input type="file" id="bgimageInput" name="bgimage" accept="image/*" style="display:none;" ${!isUnlocked('bgimage') ? 'disabled' : ''}>
+            </div>
+            <div id="cropperContainer" style="margin-top:16px;display:none;">
+              <label style="font-weight:600;display:block;margin-bottom:8px;">Crop & Adjust Image:</label>
+              <img id="cropperImage" />
             </div>
             <input type="hidden" name="cropX" id="cropX">
             <input type="hidden" name="cropY" id="cropY">
@@ -848,34 +1183,82 @@ function startDashboard(client) {
             <input type="hidden" name="cropH" id="cropH">
           </div>
         </div>
-        <div style="width:100%;display:flex;justify-content:flex-end;margin-top:18px;">
-          <button type="submit">Save Customization</button>
+
+        <!-- Actions -->
+        <div style="display:flex;gap:12px;margin-top:24px;justify-content:space-between;">
+          <div></div>
+          <div style="display:flex;gap:12px;">
+            <button type="button" class="reset-btn" onclick="if(confirm('Reset to default customization?')) {document.getElementById('customizeForm').reset(); location.reload();}">↻ Reset to Defaults</button>
+            <button type="submit">💾 Save Customization</button>
+          </div>
         </div>
       </form>
       <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
       <script>
         let cropper;
-        // Gradient color pickers update hex input
-        document.getElementById('gradColor1').addEventListener('input', function() {
-          const c1 = this.value;
-          const c2 = document.getElementById('gradColor2').value;
-          document.getElementById('gradientInput').value = c1 + ',' + c2;
-        });
-        document.getElementById('gradColor2').addEventListener('input', function() {
-          const c1 = document.getElementById('gradColor1').value;
-          const c2 = this.value;
-          document.getElementById('gradientInput').value = c1 + ',' + c2;
-        });
-        document.getElementById('gradientInput').addEventListener('input', function() {
+        
+        // Gradient color pickers
+        const gradColor1 = document.getElementById('gradColor1');
+        const gradColor2 = document.getElementById('gradColor2');
+        const gradientInput = document.getElementById('gradientInput');
+        
+        function updateGradientInput() {
+          gradientInput.value = gradColor1.value + ',' + gradColor2.value;
+        }
+        
+        gradColor1?.addEventListener('input', updateGradientInput);
+        gradColor2?.addEventListener('input', updateGradientInput);
+        
+        gradientInput?.addEventListener('input', function() {
           const parts = this.value.split(',');
-          if (parts[0]) document.getElementById('gradColor1').value = parts[0];
-          if (parts[1]) document.getElementById('gradColor2').value = parts[1];
+          if (parts[0]) gradColor1.value = parts[0];
+          if (parts[1]) gradColor2.value = parts[1];
         });
+        
         // Font preview
-        document.getElementById('fontSelect').addEventListener('change', function() {
+        document.getElementById('fontSelect')?.addEventListener('change', function() {
           this.style.fontFamily = this.options[this.selectedIndex].style.fontFamily;
         });
-        document.getElementById('bgimageInput').addEventListener('change', function(e) {
+        
+        // Drag and drop file upload
+        const dropArea = document.getElementById('dropArea');
+        const bgimageInput = document.getElementById('bgimageInput');
+        
+        if (dropArea && bgimageInput && !bgimageInput.disabled) {
+          dropArea.addEventListener('click', () => bgimageInput.click());
+          
+          ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+          });
+          
+          function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+          
+          ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, () => {
+              dropArea.classList.add('dragover');
+            });
+          });
+          
+          ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, () => {
+              dropArea.classList.remove('dragover');
+            });
+          });
+          
+          dropArea.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            bgimageInput.files = files;
+            handleImageUpload({ target: { files } });
+          });
+        }
+        
+        bgimageInput?.addEventListener('change', handleImageUpload);
+        
+        function handleImageUpload(e) {
           const file = e.target.files[0];
           if (!file) return;
           const reader = new FileReader();
@@ -901,7 +1284,7 @@ function startDashboard(client) {
             });
           };
           reader.readAsDataURL(file);
-        });
+        }
       </script>
       `;
     }
