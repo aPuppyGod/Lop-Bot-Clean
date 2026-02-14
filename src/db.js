@@ -279,9 +279,21 @@ async function initDb() {
       bgcolor TEXT,
       border TEXT,
       avatarframe TEXT,
+      avatarborder INTEGER DEFAULT 3,
+      avatarbordercolor TEXT DEFAULT '#71faf9',
+      borderglow TEXT DEFAULT 'none',
       PRIMARY KEY (guild_id, user_id)
     )
   `);
+
+  // Migrations: Add missing columns to existing tables
+  try {
+    await run(`ALTER TABLE user_rankcard_customizations ADD COLUMN IF NOT EXISTS avatarborder INTEGER DEFAULT 3`);
+    await run(`ALTER TABLE user_rankcard_customizations ADD COLUMN IF NOT EXISTS avatarbordercolor TEXT DEFAULT '#71faf9'`);
+    await run(`ALTER TABLE user_rankcard_customizations ADD COLUMN IF NOT EXISTS borderglow TEXT DEFAULT 'none'`);
+  } catch (e) {
+    // Columns might already exist, ignore error
+  }
 
   console.log("[db] ✓ All database tables initialized successfully");
   } catch (err) {

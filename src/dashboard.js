@@ -783,7 +783,7 @@ function startDashboard(client) {
       function isUnlocked(opt) {
         return userLevel >= (unlocks[opt] ?? 1);
       }
-      // Load prefs from DB
+      // Load prefs from DB or query params (for preview)
       let prefs = {};
       try {
         const dbPrefs = await get(
@@ -792,6 +792,18 @@ function startDashboard(client) {
         );
         if (dbPrefs) prefs = dbPrefs;
       } catch (e) {}
+      
+      // Override with query params for live preview (if provided)
+      if (req.query.preview === 'true') {
+        if (req.query.bgcolor) prefs.bgcolor = req.query.bgcolor;
+        if (req.query.gradient) prefs.gradient = req.query.gradient;
+        if (req.query.font) prefs.font = req.query.font;
+        if (req.query.fontcolor) prefs.fontcolor = req.query.fontcolor;
+        if (req.query.avatarborder) prefs.avatarborder = req.query.avatarborder;
+        if (req.query.avatarbordercolor) prefs.avatarbordercolor = req.query.avatarbordercolor;
+        if (req.query.borderglow) prefs.borderglow = req.query.borderglow;
+        if (req.query.avatarframe) prefs.avatarframe = req.query.avatarframe;
+      }
       // Canvas size unified with Discord bot: 600x180
       const width = 600, height = 180;
       const canvas = createCanvas(width, height);
@@ -859,6 +871,59 @@ function startDashboard(client) {
         };
         fontFamily = fontMap[prefs.font] || "'Open Sans',sans-serif";
       }
+      
+      // Helper function to draw avatar border and frame effects
+      function drawAvatarBorder(ctx, prefs) {
+        const centerX = 90, centerY = 90, radius = 60;
+        
+        // Get border settings, with defaults
+        const borderWidth = parseInt(prefs.avatarborder) || 3;
+        const borderColor = prefs.avatarbordercolor || '#71faf9';
+        const glowType = prefs.borderglow || 'none';
+        const frameType = prefs.avatarframe || 'none';
+        
+        // Draw frame style (outer decorative ring)
+        if (frameType !== 'none') {
+          ctx.save();
+          ctx.strokeStyle = frameType === 'gold' ? '#FFD700' : 
+                            frameType === 'silver' ? '#C0C0C0' :
+                            frameType === 'bronze' ? '#CD7F32' :
+                            frameType === 'neon' ? '#71faf9' : '#71faf9';
+          ctx.lineWidth = 8;
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, radius + 8, 0, Math.PI * 2);
+          ctx.stroke();
+          
+          // Inner accent line for frame
+          ctx.strokeStyle = ctx.strokeStyle;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, radius + 14, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+        
+        // Draw border (main ring)
+        ctx.save();
+        
+        // Apply glow if enabled
+        if (glowType !== 'none') {
+          const glowRadius = glowType === 'subtle' ? 8 : glowType === 'medium' ? 16 : 24;
+          ctx.shadowColor = borderColor + '80';  // 50% opacity
+          ctx.shadowBlur = glowRadius;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 0;
+        }
+        
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = borderWidth;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        ctx.restore();
+      }
+      
       // Draw profile pic (circle)
       ctx.save();
       ctx.beginPath();
@@ -892,6 +957,12 @@ function startDashboard(client) {
         ctx.fillText(user?.username ? user.username[0].toUpperCase() : "?", 80, 120);
       }
       ctx.restore();
+      
+      // Draw avatar border and frame effects if unlocked
+      if (isUnlocked('border') || isUnlocked('avatarframe')) {
+        drawAvatarBorder(ctx, prefs);
+      }
+      
       // Draw text
       ctx.font = `bold 28px ${fontFamily}`;
       ctx.fillStyle = prefs.fontcolor || "#fff";
@@ -1669,6 +1740,76 @@ function startDashboard(client) {
           };
           reader.readAsDataURL(file);
         }
+        
+        // Live preview update
+        function updatePreview() {
+          const form = document.getElementById('customizeForm');
+          if (!form) return;
+          
+          const params = new URLSearchParams();
+          params.set('preview', 'true');
+          params.set('_t', Date.now()); // Cache buster
+          
+          // Get all form values
+          const bgcolor = form.querySelector('[name="bgcolor"]')?.value;
+          if (bgcolor) params.set('bgcolor', bgcolor);
+          
+          const gradient = form.querySelector('[name="gradient"]')?.value;
+          if (gradient) params.set('gradient', gradient);
+          
+          const font = form.querySelector('[name="font"]')?.value;
+          if (font) params.set('font', font);
+          
+          const fontcolor = form.querySelector('[name="fontcolor"]')?.value;
+          if (fontcolor) params.set('fontcolor', fontcolor);
+          
+          const avatarborder = form.querySelector('[name="avatarborder"]')?.value;
+          if (avatarborder) params.set('avatarborder', avatarborder);
+          
+          const avatarbordercolor = form.querySelector('[name="avatarbordercolor"]')?.value;
+          if (avatarbordercolor) params.set('avatarbordercolor', avatarbordercolor);
+          
+          const borderglow = form.querySelector('[name="borderglow"]')?.value;
+          if (borderglow) params.set('borderglow', borderglow);
+          
+          const avatarframe = form.querySelector('[name="avatarframe"]:checked')?.value;
+          if (avatarframe) params.set('avatarframe', avatarframe);
+          
+          // Update preview image
+          const previewImg = document.getElementById('rankcardPreview');
+          if (previewImg) {
+            previewImg.src = '/lop/rankcard/image?' + params.toString();
+          }
+        }
+        
+        // Attach live preview listeners
+        setTimeout(() => {
+          const form = document.getElementById('customizeForm');
+          if (!form) return;
+          
+          // Listen to all relevant inputs
+          form.querySelectorAll('input[type="color"], select, input[type="number"], input[type="radio"]').forEach(input => {
+            input.addEventListener('change', updatePreview);
+            input.addEventListener('input', updatePreview);
+          });
+          
+          // Ensure gradient pickers trigger preview update
+          const gradColor1 = document.getElementById('gradColor1');
+          const gradColor2 = document.getElementById('gradColor2');
+          
+          if (gradColor1) {
+            gradColor1.addEventListener('input', function() {
+              updateGradientInput();
+              updatePreview();
+            });
+          }
+          if (gradColor2) {
+            gradColor2.addEventListener('input', function() {
+              updateGradientInput();
+              updatePreview();
+            });
+          }
+        }, 100);
       </script>
       `;
     }
@@ -1686,7 +1827,7 @@ function startDashboard(client) {
         `).join("")}
       </table>
       ${formHtml}
-      <img src="/lop/rankcard/image" alt="Rank Card Preview" style="margin-top:20px;border:1px solid #ccc;max-width:100%;" />
+      <img id="rankcardPreview" src="/lop/rankcard/image" alt="Rank Card Preview" style="margin-top:20px;border:1px solid #ccc;max-width:100%;" />
     `, { ...getTemplateOpts(req), active: "rankcard" }));
   });
 
@@ -1699,7 +1840,7 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
     // Only allow unlocked features
     const guild = client.guilds.cache.first();
     const guildId = guild?.id || null;
-    const { get } = require("./db");
+    const { run, get } = require("./db");
     let userLevel = 1;
     if (guildId && userId) {
       try {
