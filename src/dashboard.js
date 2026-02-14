@@ -37,7 +37,8 @@ function htmlTemplate(content, opts = {}) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
   <style>
-    body {
+    /* Light mode (default) */
+    body, body[data-theme="light"] {
       font-family: 'Montserrat', Arial, sans-serif;
       background: linear-gradient(135deg, #ffddfc 0%, #edd7ae 100%);
       margin: 0;
@@ -45,7 +46,7 @@ function htmlTemplate(content, opts = {}) {
       color: #0a1e1e;
       min-height: 100vh;
     }
-    nav {
+    nav, body[data-theme="light"] nav {
       background: linear-gradient(135deg, #71faf9 0%, #71faf9 100%);
       padding: 0 24px;
       display: flex;
@@ -53,14 +54,14 @@ function htmlTemplate(content, opts = {}) {
       height: 56px;
       box-shadow: 0 2px 12px rgba(113, 250, 249, 0.3);
     }
-    nav .logo {
+    nav .logo, body[data-theme="light"] nav .logo {
       font-weight: 700;
       font-size: 1.3em;
       color: #0a1e1e;
       margin-right: 32px;
       letter-spacing: 1px;
     }
-    nav a {
+    nav a, body[data-theme="light"] nav a {
       color: #0a1e1e;
       text-decoration: none;
       margin-right: 24px;
@@ -69,28 +70,84 @@ function htmlTemplate(content, opts = {}) {
       padding: 4px 0;
       border-bottom: 2px solid transparent;
     }
-    nav a.active, nav a:hover {
+    nav a.active, nav a:hover, body[data-theme="light"] nav a.active, body[data-theme="light"] nav a:hover {
       color: #ffddfc;
       border-bottom: 2px solid #ffddfc;
     }
-    nav .nav-right {
+    nav .nav-right, body[data-theme="light"] nav .nav-right {
       margin-left: auto;
       display: flex;
       align-items: center;
     }
-    nav .user {
+    nav .user, body[data-theme="light"] nav .user {
       display: flex;
       align-items: center;
       gap: 8px;
       font-size: 0.97em;
       color: #0a1e1e;
     }
-    nav .user img {
+    nav .user img, body[data-theme="light"] nav .user img {
       width: 32px;
       height: 32px;
       border-radius: 50%;
       border: 2px solid #ffddfc;
       background: #444;
+    }
+
+    /* Dark mode */
+    body[data-theme="dark"] {
+      background: linear-gradient(135deg, #0a1e1e 0%, #0d2626 100%);
+      color: #f0f0f0;
+    }
+    body[data-theme="dark"] nav {
+      background: linear-gradient(135deg, #ffddfc 0%, #edd7ae 100%);
+      box-shadow: 0 2px 12px rgba(255, 221, 252, 0.3);
+    }
+    body[data-theme="dark"] nav .logo {
+      color: #0a1e1e;
+    }
+    body[data-theme="dark"] nav a {
+      color: #0a1e1e;
+    }
+    body[data-theme="dark"] nav a.active, body[data-theme="dark"] nav a:hover {
+      color: #0d2626;
+      border-bottom-color: #0d2626;
+    }
+    body[data-theme="dark"] nav .user {
+      color: #0a1e1e;
+    }
+    body[data-theme="dark"] nav .user img {
+      border-color: #0d2626;
+    }
+    body[data-theme="dark"] #themeToggle {
+      background: transparent;
+      border: 2px solid #f0f0f0;
+      color: #f0f0f0;
+      cursor: pointer;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-family: 'Montserrat', Arial, sans-serif;
+      font-weight: 600;
+      margin-right: 16px;
+      transition: all 0.2s;
+    }
+    body[data-theme="dark"] #themeToggle:hover {
+      background: rgba(240, 240, 240, 0.1);
+    }
+    body[data-theme="light"] #themeToggle {
+      background: transparent;
+      border: 2px solid #0a1e1e;
+      color: #0a1e1e;
+      cursor: pointer;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-family: 'Montserrat', Arial, sans-serif;
+      font-weight: 600;
+      margin-right: 16px;
+      transition: all 0.2s;
+    }
+    body[data-theme="light"] #themeToggle:hover {
+      background: rgba(10, 30, 30, 0.1);
     }
     .container {
       max-width: 900px;
@@ -101,14 +158,25 @@ function htmlTemplate(content, opts = {}) {
       padding: 32px 24px 24px 24px;
       border: 2px solid rgba(113, 250, 249, 0.3);
     }
+    body[data-theme="dark"] .container {
+      background: rgba(13, 38, 38, 0.9);
+      border: 2px solid rgba(255, 221, 252, 0.3);
+      box-shadow: 0 8px 32px rgba(255, 221, 252, 0.1);
+    }
     h2 {
       color: #71faf9;
       text-align: center;
       margin-top: 0;
     }
+    body[data-theme="dark"] h2 {
+      color: #ffddfc;
+    }
     h3 {
       color: #ffddfc;
       margin-bottom: 8px;
+    }
+    body[data-theme="dark"] h3 {
+      color: #71faf9;
     }
     button, .btn {
       background: linear-gradient(135deg, #71faf9 0%, #5fe8f7 100%);
@@ -129,6 +197,15 @@ function htmlTemplate(content, opts = {}) {
       transform: translateY(-3px);
       box-shadow: 0 6px 20px rgba(113, 250, 249, 0.5);
     }
+    body[data-theme="dark"] button, body[data-theme="dark"] .btn {
+      background: linear-gradient(135deg, #ffddfc 0%, #edd7ae 100%);
+      color: #0a1e1e;
+      box-shadow: 0 4px 12px rgba(255, 221, 252, 0.3);
+    }
+    body[data-theme="dark"] button:hover, body[data-theme="dark"] .btn:hover {
+      background: linear-gradient(135deg, #edd7ae 0%, #ffddfc 100%);
+      box-shadow: 0 6px 20px rgba(255, 221, 252, 0.5);
+    }
     input, select {
       padding: 7px;
       border: 2px solid #71faf9;
@@ -143,6 +220,17 @@ function htmlTemplate(content, opts = {}) {
       box-shadow: 0 0 12px rgba(113, 250, 249, 0.4);
       background: white;
     }
+    body[data-theme="dark"] input, body[data-theme="dark"] select {
+      border: 2px solid #ffddfc;
+      background: rgba(13, 38, 38, 0.8);
+      color: #f0f0f0;
+    }
+    body[data-theme="dark"] input:focus, body[data-theme="dark"] select:focus {
+      outline: none;
+      border-color: #71faf9;
+      box-shadow: 0 0 12px rgba(255, 221, 252, 0.4);
+      background: rgba(13, 38, 38, 0.95);
+    }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -153,10 +241,17 @@ function htmlTemplate(content, opts = {}) {
       border-bottom: 1px solid #e0e0e0;
       text-align: left;
     }
+    body[data-theme="dark"] th, body[data-theme="dark"] td {
+      border-bottom-color: #1a3a3a;
+    }
     th {
       color: #0a1e1e;
       font-weight: 700;
       background: rgba(113, 250, 249, 0.2);
+    }
+    body[data-theme="dark"] th {
+      color: #f0f0f0;
+      background: rgba(255, 221, 252, 0.2);
     }
     tr:last-child td {
       border-bottom: none;
@@ -177,11 +272,20 @@ function htmlTemplate(content, opts = {}) {
       color: #ffddfc;
       text-decoration: underline;
     }
+    body[data-theme="dark"] a {
+      color: #ffddfc;
+    }
+    body[data-theme="dark"] a:hover {
+      color: #71faf9;
+    }
     hr {
       border: 0;
       height: 2px;
       background: linear-gradient(90deg, transparent, #71faf9 20%, #ffddfc 50%, #71faf9 80%, transparent);
       margin: 24px 0;
+    }
+    body[data-theme="dark"] hr {
+      background: linear-gradient(90deg, transparent, #ffddfc 20%, #71faf9 50%, #ffddfc 80%, transparent);
     }
     form {
       margin-bottom: 20px;
@@ -192,8 +296,40 @@ function htmlTemplate(content, opts = {}) {
       nav .logo { margin-bottom: 8px; }
     }
   </style>
+  <script>
+    // Initialize theme from localStorage or dark mode default
+    function initTheme() {
+      const savedTheme = localStorage.getItem('lop-theme') || 'dark';
+      document.body.setAttribute('data-theme', savedTheme);
+      updateThemeButton(savedTheme);
+    }
+    
+    // Update button text and icon based on current theme
+    function updateThemeButton(theme) {
+      const btn = document.getElementById('themeToggle');
+      if (btn) {
+        if (theme === 'dark') {
+          btn.textContent = '☀️ Light';
+        } else {
+          btn.textContent = '🌙 Dark';
+        }
+      }
+    }
+    
+    // Toggle between dark and light themes
+    function toggleTheme() {
+      const currentTheme = document.body.getAttribute('data-theme') || 'dark';
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      document.body.setAttribute('data-theme', newTheme);
+      localStorage.setItem('lop-theme', newTheme);
+      updateThemeButton(newTheme);
+    }
+    
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', initTheme);
+  </script>
 </head>
-<body>
+<body data-theme="dark">
   <nav>
     <span class="logo">Lop-Bot</span>
     <a href="/"${active==="home"?" class=active":""}>Home</a>
@@ -201,6 +337,7 @@ function htmlTemplate(content, opts = {}) {
     <a href="/lop"${active==="rankcard"?" class=active":""}>Rank Card</a>
     ${isAdmin?'<a href="/dashboard"'+(active==="admin"?' class=active':'')+'>Admin</a>':''}
     <span class="nav-right">
+      <button id="themeToggle" onclick="toggleTheme()">☀️ Light</button>
       ${user?`<span class="user"><img src="https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64" alt="avatar" />${escapeHtml(user.username)}#${escapeHtml(user.discriminator)} <a href="/logout" class="btn" style="margin-left:10px;">Logout</a></span>`:`<a href="/login" class="btn">Login with Discord</a>`}
     </span>
   </nav>
