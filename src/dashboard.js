@@ -1184,6 +1184,71 @@ function startDashboard(client) {
           </div>
         </div>
 
+        <!-- Avatar Frame Section -->
+        <div class="customize-section">
+          <div class="section-title">
+            ✨ Avatar Frame
+            ${!isUnlocked('avatarframe') ? '<span class="feature-badge locked">Locked at Lvl ' + unlocks.avatarframe + '</span>' : '<span class="feature-badge">Lvl ' + unlocks.avatarframe + '+</span>'}
+          </div>
+          <div class="form-group" style="grid-column: 1/-1;">
+            <label style="font-weight:600;margin-bottom:12px;display:block;">Choose a frame style:</label>
+            <div style="display:grid;grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));gap:12px;">
+              <label style="display:flex;flex-direction:column;align-items:center;cursor:pointer;gap:6px;padding:12px;border-radius:8px;border:2px solid transparent;transition:all 0.2s;${!isUnlocked('avatarframe') ? 'opacity:0.5;cursor:not-allowed;' : ''}">
+                <div style="width:70px;height:70px;border-radius:50%;background:#999;display:flex;align-items:center;justify-content:center;font-size:2em;">👤</div>
+                <span style="font-weight:600;font-size:0.85em;">None</span>
+                <input type="radio" name="avatarframe" value="none" ${prefs.avatarframe === 'none' || !prefs.avatarframe ? 'checked' : ''} ${!isUnlocked('avatarframe') ? 'disabled' : ''} style="display:none;">
+              </label>
+              <label style="display:flex;flex-direction:column;align-items:center;cursor:pointer;gap:6px;padding:12px;border-radius:8px;border:2px solid transparent;transition:all 0.2s;${!isUnlocked('avatarframe') ? 'opacity:0.5;cursor:not-allowed;' : ''}">
+                <div style="width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg, #FFD700, #FFA500);display:flex;align-items:center;justify-content:center;font-size:2em;box-shadow:inset 0 0 0 3px #FFD700;">👤</div>
+                <span style="font-weight:600;font-size:0.85em;">Gold Ring</span>
+                <input type="radio" name="avatarframe" value="gold" ${prefs.avatarframe === 'gold' ? 'checked' : ''} ${!isUnlocked('avatarframe') ? 'disabled' : ''} style="display:none;">
+              </label>
+              <label style="display:flex;flex-direction:column;align-items:center;cursor:pointer;gap:6px;padding:12px;border-radius:8px;border:2px solid transparent;transition:all 0.2s;${!isUnlocked('avatarframe') ? 'opacity:0.5;cursor:not-allowed;' : ''}">
+                <div style="width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg, #C0C0C0, #A8A9AD);display:flex;align-items:center;justify-content:center;font-size:2em;box-shadow:inset 0 0 0 3px #C0C0C0;">👤</div>
+                <span style="font-weight:600;font-size:0.85em;">Silver Ring</span>
+                <input type="radio" name="avatarframe" value="silver" ${prefs.avatarframe === 'silver' ? 'checked' : ''} ${!isUnlocked('avatarframe') ? 'disabled' : ''} style="display:none;">
+              </label>
+              <label style="display:flex;flex-direction:column;align-items:center;cursor:pointer;gap:6px;padding:12px;border-radius:8px;border:2px solid transparent;transition:all 0.2s;${!isUnlocked('avatarframe') ? 'opacity:0.5;cursor:not-allowed;' : ''}">
+                <div style="width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg, #CD7F32, #B87333);display:flex;align-items:center;justify-content:center;font-size:2em;box-shadow:inset 0 0 0 3px #CD7F32;">👤</div>
+                <span style="font-weight:600;font-size:0.85em;">Bronze Ring</span>
+                <input type="radio" name="avatarframe" value="bronze" ${prefs.avatarframe === 'bronze' ? 'checked' : ''} ${!isUnlocked('avatarframe') ? 'disabled' : ''} style="display:none;">
+              </label>
+              <label style="display:flex;flex-direction:column;align-items:center;cursor:pointer;gap:6px;padding:12px;border-radius:8px;border:2px solid transparent;transition:all 0.2s;${!isUnlocked('avatarframe') ? 'opacity:0.5;cursor:not-allowed;' : ''}">
+                <div style="width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg, #71faf9, #ffddfc);display:flex;align-items:center;justify-content:center;font-size:2em;box-shadow:inset 0 0 0 3px #71faf9;">👤</div>
+                <span style="font-weight:600;font-size:0.85em;">Neon</span>
+                <input type="radio" name="avatarframe" value="neon" ${prefs.avatarframe === 'neon' ? 'checked' : ''} ${!isUnlocked('avatarframe') ? 'disabled' : ''} style="display:none;">
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Border Section -->
+        <div class="customize-section">
+          <div class="section-title">
+            🛑 Avatar Border
+            ${!isUnlocked('border') ? '<span class="feature-badge locked">Locked at Lvl ' + unlocks.border + '</span>' : '<span class="feature-badge">Lvl ' + unlocks.border + '+</span>'}
+          </div>
+          <div class="customize-grid">
+            <div class="form-group">
+              <label>Border Width (px)</label>
+              <input type="number" name="avatarborder" min="0" max="20" value="${prefs.avatarborder || '3'}" ${!isUnlocked('border') ? 'disabled' : ''}>
+            </div>
+            <div class="form-group">
+              <label>Border Color</label>
+              <input type="color" name="avatarbordercolor" value="${prefs.avatarbordercolor || '#71faf9'}" ${!isUnlocked('border') ? 'disabled' : ''}>
+            </div>
+            <div class="form-group">
+              <label>Glow Effect</label>
+              <select name="borderglow" ${!isUnlocked('border') ? 'disabled' : ''}>
+                <option value="none" ${prefs.borderglow === 'none' ? 'selected' : ''}>None</option>
+                <option value="subtle" ${prefs.borderglow === 'subtle' ? 'selected' : ''}>Subtle</option>
+                <option value="medium" ${prefs.borderglow === 'medium' ? 'selected' : ''}>Medium</option>
+                <option value="intense" ${prefs.borderglow === 'intense' ? 'selected' : ''}>Intense</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         <!-- Actions -->
         <div style="display:flex;gap:12px;margin-top:24px;justify-content:space-between;">
           <div></div>
@@ -1359,6 +1424,11 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
         .toFile(croppedPath);
       update.bgimage = croppedPath;
     }
+    // Save border and avatar frame if unlocked
+    if (isUnlocked('border') && req.body.avatarborder) update.avatarborder = parseInt(req.body.avatarborder) || 3;
+    if (isUnlocked('border') && req.body.avatarbordercolor) update.avatarbordercolor = req.body.avatarbordercolor;
+    if (isUnlocked('border') && req.body.borderglow) update.borderglow = req.body.borderglow;
+    if (isUnlocked('avatarframe') && req.body.avatarframe) update.avatarframe = req.body.avatarframe;
     // Upsert prefs
     const keys = Object.keys(update);
     if (keys.length > 0) {

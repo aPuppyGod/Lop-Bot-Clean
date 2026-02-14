@@ -146,6 +146,58 @@ async function setUserXp(guildId, userId, xp) {
 // Command implementations
 // ─────────────────────────────────────────────────────
 
+// Draw avatar border and frame effects
+function drawAvatarBorder(ctx, prefs) {
+  const centerX = 90, centerY = 90, radius = 60;
+  
+  // Get border settings, with defaults
+  const borderWidth = parseInt(prefs.avatarborder) || 3;
+  const borderColor = prefs.avatarbordercolor || '#71faf9';
+  const glowType = prefs.borderglow || 'none';
+  const frameType = prefs.avatarframe || 'none';
+  
+  // Draw frame style (outer decorative ring)
+  if (frameType !== 'none') {
+    ctx.save();
+    ctx.strokeStyle = frameType === 'gold' ? '#FFD700' : 
+                      frameType === 'silver' ? '#C0C0C0' :
+                      frameType === 'bronze' ? '#CD7F32' :
+                      frameType === 'neon' ? '#71faf9' : '#71faf9';
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius + 8, 0, Math.PI * 2);
+    ctx.stroke();
+    
+    // Inner accent line for frame
+    ctx.strokeStyle = ctx.strokeStyle;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius + 14, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+  
+  // Draw border (main ring)
+  ctx.save();
+  
+  // Apply glow if enabled
+  if (glowType !== 'none') {
+    const glowRadius = glowType === 'subtle' ? 8 : glowType === 'medium' ? 16 : 24;
+    ctx.shadowColor = borderColor + '80';  // 50% opacity
+    ctx.shadowBlur = glowRadius;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+  }
+  
+  ctx.strokeStyle = borderColor;
+  ctx.lineWidth = borderWidth;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+  ctx.stroke();
+  
+  ctx.restore();
+}
+
 async function cmdHelp(message) {
   const lines = [
     "**Commands**",
@@ -269,6 +321,9 @@ async function cmdRank(message, args) {
       ctx.clip();
       ctx.drawImage(avatar, 30, 20, 120, 120);
       ctx.restore();
+      
+      // Draw avatar border and frame effects
+      drawAvatarBorder(ctx, prefs);
     } else {
       throw new Error('Avatar fetch failed');
     }
@@ -289,6 +344,9 @@ async function cmdRank(message, args) {
         ctx.clip();
         ctx.drawImage(avatar, 30, 30, 120, 120);
         ctx.restore();
+        
+        // Draw avatar border and frame effects
+        drawAvatarBorder(ctx, prefs);
       } else {
         throw new Error('Default avatar fetch failed');
       }
@@ -305,6 +363,9 @@ async function cmdRank(message, args) {
       const initials = targetUser.username ? targetUser.username[0].toUpperCase() : "?";
       ctx.fillText(initials, 80, 120);
       ctx.restore();
+      
+      // Draw avatar border and frame effects
+      drawAvatarBorder(ctx, prefs);
       console.error("Default avatar load failed for user:", targetUser.tag, e1, e2);
     }
   }
