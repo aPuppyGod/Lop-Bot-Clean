@@ -171,6 +171,9 @@ async function cmdHelp(message) {
     "• `!sync-roles`",
     "• `!import-mee6`",
     "• `!claim-all [force]`",
+    "",
+    "**Website**",
+    "• `!lop-bot` — Visit: https://lop-bot-clean-production.up.railway.app",
   ];
 
   await message.reply(lines.join("\n")).catch(() => {});
@@ -864,7 +867,7 @@ async function handleCommands(message) {
   // Lop-Bot public site command
   if (cmd === "lop-bot" || cmd === "lopbot") {
     // You can change this URL to your actual public site URL
-    const publicUrl = process.env.LOPBOT_PUBLIC_URL || "https://lop-bot.example.com/lop";
+    const publicUrl = process.env.LOPBOT_PUBLIC_URL || "https://lop-bot-clean-production.up.railway.app";
     await message.reply(`View the Lop-Bot leaderboard and customize your rank card here: ${publicUrl}`).catch(() => {});
     return true;
   }
