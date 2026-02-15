@@ -969,15 +969,26 @@ function startDashboard(client) {
         drawAvatarBorder(ctx, prefs);
       }
       
-      // Draw text
+      // Draw text with outline for visibility
       ctx.font = `bold 28px ${fontFamily}`;
       ctx.fillStyle = prefs.fontcolor || "#fff";
+      ctx.strokeStyle = "rgba(0,0,0,0.6)";
+      ctx.lineWidth = 3;
+      ctx.strokeText(user?.tag || "Your Name", 170, 70);
       ctx.fillText(user?.tag || "Your Name", 170, 70);
+      
       ctx.font = `bold 22px ${fontFamily}`;
-      ctx.fillStyle = "#71faf9";
+      ctx.fillStyle = "#ffffff";
+      ctx.strokeStyle = "rgba(0,0,0,0.7)";
+      ctx.lineWidth = 2;
+      ctx.strokeText(`Level: ${userLevel}`, 170, 110);
       ctx.fillText(`Level: ${userLevel}`, 170, 110);
+      
       ctx.font = `16px ${fontFamily}`;
-      ctx.fillStyle = "#ccc";
+      ctx.fillStyle = "#ffffff";
+      ctx.strokeStyle = "rgba(0,0,0,0.7)";
+      ctx.lineWidth = 2;
+      ctx.strokeText(`XP: ${userXp} / ${userXp + 100}`, 170, 140);
       ctx.fillText(`XP: ${userXp} / ${userXp + 100}`, 170, 140);
       // Progress bar
       const barX = 170, barY = 150, barW = 380, barH = 20;
@@ -1198,15 +1209,26 @@ function startDashboard(client) {
           drawAvatarBorder(ctx, prefs);
         }
         
-        // Draw text
+        // Draw text with outline for visibility
         ctx.font = `bold 28px ${fontFamily}`;
         ctx.fillStyle = prefs.fontcolor || "#fff";
+        ctx.strokeStyle = "rgba(0,0,0,0.6)";
+        ctx.lineWidth = 3;
+        ctx.strokeText(user?.tag || "Your Name", 170, 70);
         ctx.fillText(user?.tag || "Your Name", 170, 70);
+        
         ctx.font = `bold 22px ${fontFamily}`;
-        ctx.fillStyle = "#71faf9";
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = "rgba(0,0,0,0.7)";
+        ctx.lineWidth = 2;
+        ctx.strokeText(`Level: ${userLevel}`, 170, 110);
         ctx.fillText(`Level: ${userLevel}`, 170, 110);
+        
         ctx.font = `16px ${fontFamily}`;
-        ctx.fillStyle = "#ccc";
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = "rgba(0,0,0,0.7)";
+        ctx.lineWidth = 2;
+        ctx.strokeText(`XP: ${userXp} / ${userXp + 100}`, 170, 140);
         ctx.fillText(`XP: ${userXp} / ${userXp + 100}`, 170, 140);
         
         // Progress bar
@@ -1427,7 +1449,19 @@ function startDashboard(client) {
           background: rgba(184,134,11,0.2);
           color: #b8860b;
         }
-        .customize-form input[type="color"],
+        .customize-form input[type="color"] {
+          width: 60px;
+          height: 44px;
+          padding: 2px;
+          border: 2px solid rgba(113,250,249,0.5);
+          border-radius: 6px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .customize-form input[type="color"]:hover {
+          border-color: #71faf9;
+          box-shadow: 0 0 12px rgba(113,250,249,0.5);
+        }
         .customize-form input[type="text"],
         .customize-form select,
         .customize-form input[type="number"] {
@@ -1439,7 +1473,13 @@ function startDashboard(client) {
           font-size: 0.95em;
           transition: all 0.2s;
         }
-        body[data-theme="dark"] .customize-form input[type="color"],
+        body[data-theme="dark"] .customize-form input[type="color"] {
+          border-color: rgba(255,221,252,0.5);
+        }
+        body[data-theme="dark"] .customize-form input[type="color"]:hover {
+          border-color: #ffddfc;
+          box-shadow: 0 0 12px rgba(255,221,252,0.5);
+        }
         body[data-theme="dark"] .customize-form input[type="text"],
         body[data-theme="dark"] .customize-form select,
         body[data-theme="dark"] .customize-form input[type="number"] {
@@ -1699,6 +1739,11 @@ function startDashboard(client) {
           
           .crop-actions button {
             width: 100%;
+          }
+          
+          .customize-form input[type="color"] {
+            width: 50px;
+            height: 40px;
           }
         }
         
