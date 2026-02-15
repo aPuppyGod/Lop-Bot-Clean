@@ -1808,11 +1808,9 @@ function startDashboard(client) {
               <label style="font-weight:600;margin-bottom:8px;display:block;">Gradient Colors <span class="feature-badge">${isUnlocked('gradient') ? 'Lvl ' + unlocks.gradient : 'Locked'}</span></label>
               <div style="display:grid;grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));gap:8px;">
                 <div>
-                  <label style="font-size:0.85em;font-weight:600;">Start Color</label>
                   <input type="color" id="gradColor1" class="grad-picker" value="${prefs.gradient?.split(',')[0] || '#ffddfc'}" ${!isUnlocked('gradient') ? 'disabled' : ''}>
                 </div>
                 <div>
-                  <label style="font-size:0.85em;font-weight:600;">End Color</label>
                   <input type="color" id="gradColor2" class="grad-picker" value="${prefs.gradient?.split(',')[1] || '#edd7ae'}" ${!isUnlocked('gradient') ? 'disabled' : ''}>
                 </div>
               </div>
