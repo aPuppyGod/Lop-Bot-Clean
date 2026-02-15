@@ -394,18 +394,30 @@ async function cmdRank(message, args) {
   if (!isRenderable(displayName, fontFamily)) displayName = targetUser.username;
   ctx.font = `bold 28px ${fontFamily}`;
   ctx.fillStyle = fontColor;
+  ctx.strokeStyle = "rgba(0,0,0,0.6)";
+  ctx.lineWidth = 3;
+  ctx.strokeText(displayName, 170, 50);
   ctx.fillText(displayName, 170, 50);
 
-  ctx.font = "bold 22px OpenSans";
-  ctx.fillStyle = "#FFD700";
+  ctx.font = `bold 22px ${fontFamily}`;
+  ctx.fillStyle = "#ffffff";
+  ctx.strokeStyle = "rgba(0,0,0,0.7)";
+  ctx.lineWidth = 2;
+  ctx.strokeText(`Level: ${level}`, 170, 80);
   ctx.fillText(`Level: ${level}`, 170, 80);
 
-  ctx.font = "bold 22px OpenSans";
-  ctx.fillStyle = "#43B581";
+  ctx.font = `bold 22px ${fontFamily}`;
+  ctx.fillStyle = "#ffffff";
+  ctx.strokeStyle = "rgba(0,0,0,0.7)";
+  ctx.lineWidth = 2;
+  if (rank && rank > 0) ctx.strokeText(`Rank: #${rank}`, 170, 105);
   if (rank && rank > 0) ctx.fillText(`Rank: #${rank}`, 170, 105);
 
-  ctx.font = "16px OpenSans";
-  ctx.fillStyle = "#aaa";
+  ctx.font = `16px ${fontFamily}`;
+  ctx.fillStyle = "#ffffff";
+  ctx.strokeStyle = "rgba(0,0,0,0.7)";
+  ctx.lineWidth = 2;
+  ctx.strokeText(`XP: ${xp} / ${xpNext} (+${xpToNext} to next)`, 170, 130);
   ctx.fillText(`XP: ${xp} / ${xpNext} (+${xpToNext} to next)`, 170, 130);
 
   // Progress bar
@@ -420,8 +432,11 @@ async function cmdRank(message, args) {
   ctx.strokeRect(barX, barY, barW, barH);
 
   // Progress bar text
-  ctx.font = "bold 16px OpenSans";
+  ctx.font = `bold 16px ${fontFamily}`;
   ctx.fillStyle = "#fff";
+  ctx.strokeStyle = "rgba(0,0,0,0.7)";
+  ctx.lineWidth = 2;
+  ctx.strokeText(`${xpIntoLevel} / ${xpToNextLevel(level)} XP this level`, barX + 10, barY + 16);
   ctx.fillText(`${xpIntoLevel} / ${xpToNextLevel(level)} XP this level`, barX + 10, barY + 16);
 
   // Attach only (no embed)
