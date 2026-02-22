@@ -5,7 +5,7 @@ const multer = require("multer");
 const upload = multer({ dest: "uploads/" });
 
 const { get, run, all } = require("./db");
-const { xpToNextLevel, totalXpForLevel } = require("./xp");
+const { levelFromXp, xpToNextLevel, totalXpForLevel } = require("./xp");
 
 // Discord OAuth2 setup
 const DiscordStrategy = require("passport-discord").Strategy;
@@ -550,7 +550,16 @@ function escapeHtml(s) {
     .replaceAll('"', "&quot;");
 }
 
-const { getGuildSettings, getLevelRoles, getIgnoredChannels } = require("./settings");
+const {
+  getGuildSettings,
+  getLevelRoles,
+  getIgnoredChannels,
+  updateGuildSettings,
+  setLevelRole,
+  deleteLevelRole,
+  addIgnoredChannel,
+  removeIgnoredChannel
+} = require("./settings");
 const { ChannelType } = require("discord.js");
 
 function startDashboard(client) {
@@ -592,6 +601,38 @@ function startDashboard(client) {
     function requireAdminOrManager(req, res, next) {
       if (req.isAuthenticated && req.isAuthenticated() && isAdminOrManagerDiscord(req.user, client)) return next();
       return res.status(403).send("You must be a Discord server admin or bot manager to access this page.");
+    }
+
+    async function userCanManageGuild(user, guildId) {
+      if (!user?.id || !guildId) return false;
+      if (process.env.BOT_MANAGER_ID && user.id === process.env.BOT_MANAGER_ID) return true;
+
+      const guild = client.guilds.cache.get(guildId);
+      if (!guild) return false;
+
+      let member = guild.members.cache.get(user.id);
+      if (!member) {
+        member = await guild.members.fetch(user.id).catch(() => null);
+      }
+      if (!member) return false;
+
+      return (
+        member.permissions.has("Administrator") ||
+        member.permissions.has("ManageGuild") ||
+        member.permissions.has("ManageChannels")
+      );
+    }
+
+    async function requireGuildAdmin(req, res, next) {
+      if (!(req.isAuthenticated && req.isAuthenticated())) {
+        if (req.session) req.session.returnTo = req.originalUrl;
+        return res.redirect("/login");
+      }
+
+      const guildId = req.params.guildId;
+      const allowed = await userCanManageGuild(req.user, guildId);
+      if (!allowed) return res.status(403).send("You are not allowed to manage this server.");
+      return next();
     }
 
     // Leaderboard page
@@ -2676,7 +2717,7 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
   // ─────────────────────────────────────────────
   // Guild page
   // ─────────────────────────────────────────────
-  app.get("/guild/:guildId", mustBeLoggedIn, async (req, res) => {
+  app.get("/guild/:guildId", requireGuildAdmin, async (req, res) => {
     const guildId = req.params.guildId;
     const guild = client.guilds.cache.get(guildId);
     if (!guild) return res.status(404).send("Bot is not in that guild.");
@@ -2690,6 +2731,59 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
       .filter((c) => c.type === ChannelType.GuildText || c.type === ChannelType.GuildAnnouncement)
       .map((c) => ({ id: c.id, name: c.name }))
       .sort((a, b) => a.name.localeCompare(b.name));
+    const voiceChannels = guild.channels.cache
+      .filter((c) => c.type === ChannelType.GuildVoice || c.type === ChannelType.GuildStageVoice)
+      .map((c) => ({ id: c.id, name: c.name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    await guild.roles.fetch().catch(() => {});
+    await guild.members.fetch().catch(() => {});
+
+    const roleOptions = guild.roles.cache
+      .filter((r) => !r.managed && r.id !== guild.id)
+      .sort((a, b) => b.position - a.position)
+      .map((r) => ({ id: r.id, name: r.name }));
+
+    const modWarnings = await all(
+      `SELECT id, user_id, moderator_id, reason, created_at
+       FROM mod_warnings
+       WHERE guild_id=?
+       ORDER BY created_at DESC
+       LIMIT 50`,
+      [guildId]
+    );
+    const warningRows = modWarnings.map((w) => {
+      const target = guild.members.cache.get(w.user_id);
+      const moderator = guild.members.cache.get(w.moderator_id);
+      const targetName = target ? `${target.displayName} (${target.user.username})` : w.user_id;
+      const moderatorName = moderator ? `${moderator.displayName} (${moderator.user.username})` : w.moderator_id;
+      const createdAt = Number.isFinite(Number(w.created_at)) ? new Date(Number(w.created_at)).toLocaleString() : "-";
+      return {
+        id: w.id,
+        userId: w.user_id,
+        targetName,
+        moderatorName,
+        reason: w.reason,
+        createdAt
+      };
+    });
+
+    const claimLock = await get(`SELECT claim_all_done FROM guild_settings WHERE guild_id=?`, [guildId]);
+    const claimLocked = claimLock?.claim_all_done === 1;
+
+    const topUsers = await all(
+      `SELECT user_id, xp, level FROM user_xp WHERE guild_id=? ORDER BY xp DESC LIMIT 20`,
+      [guildId]
+    );
+
+    const privateRooms = await all(
+      `SELECT owner_id, voice_channel_id, text_channel_id, created_at, last_active_at
+       FROM private_voice_rooms
+       WHERE guild_id=?
+       ORDER BY last_active_at DESC
+       LIMIT 50`,
+      [guildId]
+    );
 
     // Customization unlocks UI
     const { getCustomizationUnlocks } = require("./settings");
@@ -2707,6 +2801,31 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
       <h2>${escapeHtml(guild.name)}</h2>
       <p><a href="/">Back</a> | <a href="/logout">Logout</a></p>
 
+      <h3>Quick Overview</h3>
+      <ul>
+        <li>Members tracked by XP: <b>${topUsers.length}</b> (top 20 shown below)</li>
+        <li>Configured mod role: <b>${settings.mod_role_id ? escapeHtml(settings.mod_role_id) : "Not set"}</b></li>
+        <li>Warnings stored: <b>${warningRows.length}</b></li>
+        <li>Private VC rooms tracked: <b>${privateRooms.length}</b></li>
+        <li>Claim-all lock: <b>${claimLocked ? "Locked" : "Unlocked"}</b></li>
+      </ul>
+
+      <hr/>
+
+      <h3>Moderation Settings</h3>
+      <form method="post" action="/guild/${guildId}/mod-settings">
+        <label>Mod Role
+          <select name="mod_role_id">
+            <option value="" ${!settings.mod_role_id ? "selected" : ""}>None</option>
+            ${roleOptions.map((r) => `
+              <option value="${r.id}" ${settings.mod_role_id === r.id ? "selected" : ""}>@${escapeHtml(r.name)} (${r.id})</option>
+            `).join("")}
+          </select>
+        </label>
+        <br/><br/>
+        <button type="submit">Save Moderation Settings</button>
+      </form>
+
       <hr/>
 
       <h3>XP Settings</h3>
@@ -2719,6 +2838,28 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
         <label>Voice XP Per Minute <input name="voice_xp_per_minute" value="${escapeHtml(settings.voice_xp_per_minute)}" /></label><br/><br/>
         <button type="submit">Save XP Settings</button>
       </form>
+
+      <h3>XP User Manager</h3>
+      <form method="post" action="/guild/${guildId}/xp/manage">
+        <label>User ID <input name="user_id" /></label>
+        <label>Action
+          <select name="action">
+            <option value="add">Add</option>
+            <option value="set">Set</option>
+          </select>
+        </label>
+        <label>Amount <input name="amount" /></label>
+        <button type="submit">Apply XP</button>
+      </form>
+
+      <table style="max-width:680px;">
+        <tr><th>User</th><th>Level</th><th>XP</th></tr>
+        ${topUsers.map((u) => {
+          const m = guild.members.cache.get(u.user_id);
+          const label = m ? `${m.displayName} (${m.user.username})` : u.user_id;
+          return `<tr><td>${escapeHtml(label)}</td><td>${u.level}</td><td>${u.xp}</td></tr>`;
+        }).join("")}
+      </table>
 
       <hr/>
 
@@ -2792,7 +2933,19 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
 
       <h3>Ignored Channels (No XP)</h3>
       <form method="post" action="/guild/${guildId}/ignored-channels">
-        <label>Channel ID <input name="channel_id" /></label>
+        <label>Text Channel
+          <select name="text_channel_id">
+            <option value="">None</option>
+            ${textChannels.map((c) => `<option value="${c.id}">#${escapeHtml(c.name)} (${c.id})</option>`).join("")}
+          </select>
+        </label>
+        <label>Voice Channel
+          <select name="voice_channel_id">
+            <option value="">None</option>
+            ${voiceChannels.map((c) => `<option value="${c.id}">${escapeHtml(c.name)} (${c.id})</option>`).join("")}
+          </select>
+        </label>
+        <label>Or Channel ID <input name="channel_id" /></label>
         <label>Type 
           <select name="channel_type">
             <option value="text">Text</option>
@@ -2813,35 +2966,229 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
           </li>
         `).join("")}
       </ul>
+
+      <hr/>
+
+      <h3>Warnings</h3>
+      <table>
+        <tr><th>Target</th><th>Moderator</th><th>Reason</th><th>Date</th><th>Actions</th></tr>
+        ${warningRows.map((w) => `
+          <tr>
+            <td>${escapeHtml(w.targetName)}</td>
+            <td>${escapeHtml(w.moderatorName)}</td>
+            <td>${escapeHtml(w.reason)}</td>
+            <td>${escapeHtml(w.createdAt)}</td>
+            <td>
+              <form method="post" action="/guild/${guildId}/warnings/delete" style="display:inline;">
+                <input type="hidden" name="warning_id" value="${w.id}" />
+                <button type="submit">Delete</button>
+              </form>
+              <form method="post" action="/guild/${guildId}/warnings/clear-user" style="display:inline;">
+                <input type="hidden" name="user_id" value="${escapeHtml(w.userId)}" />
+                <button type="submit">Clear User</button>
+              </form>
+            </td>
+          </tr>
+        `).join("")}
+      </table>
+
+      <hr/>
+
+      <h3>Claim-All Lock</h3>
+      <p>Current status: <b>${claimLocked ? "Locked" : "Unlocked"}</b></p>
+      <form method="post" action="/guild/${guildId}/claim-lock" style="display:inline;">
+        <input type="hidden" name="claim_all_done" value="0" />
+        <button type="submit">Unlock claim-all</button>
+      </form>
+      <form method="post" action="/guild/${guildId}/claim-lock" style="display:inline; margin-left: 8px;">
+        <input type="hidden" name="claim_all_done" value="1" />
+        <button type="submit">Lock claim-all</button>
+      </form>
+
+      <hr/>
+
+      <h3>Private Voice Rooms</h3>
+      <table>
+        <tr><th>Owner</th><th>Voice Channel</th><th>Text Channel</th><th>Last Active</th><th>Actions</th></tr>
+        ${privateRooms.map((r) => {
+          const owner = guild.members.cache.get(r.owner_id);
+          const ownerName = owner ? `${owner.displayName} (${owner.user.username})` : r.owner_id;
+          const lastActive = Number.isFinite(Number(r.last_active_at)) ? new Date(Number(r.last_active_at)).toLocaleString() : "-";
+          return `
+            <tr>
+              <td>${escapeHtml(ownerName)}</td>
+              <td>${escapeHtml(r.voice_channel_id)}</td>
+              <td>${escapeHtml(r.text_channel_id)}</td>
+              <td>${escapeHtml(lastActive)}</td>
+              <td>
+                <form method="post" action="/guild/${guildId}/private-rooms/delete" style="display:inline;">
+                  <input type="hidden" name="voice_channel_id" value="${escapeHtml(r.voice_channel_id)}" />
+                  <button type="submit">Remove Record</button>
+                </form>
+              </td>
+            </tr>
+          `;
+        }).join("")}
+      </table>
     `));
-    // ─────────────────────────────────────────────
-    // Save customization unlocks
-    // ─────────────────────────────────────────────
-    app.post("/guild/:guildId/customization-unlocks", mustBeLoggedIn, async (req, res) => {
-      try {
-        const guildId = req.params.guildId;
-        const { setCustomizationUnlock } = require("./settings");
-        const customizationOptions = [
-          "bgimage", "gradient", "bgcolor", "font", "border", "avatarframe"
-        ];
-        for (const key of customizationOptions) {
-          const val = parseInt(req.body[key], 10);
-          if (Number.isInteger(val) && val > 0) {
-            await setCustomizationUnlock(guildId, key, val);
-          }
+  });
+
+  // ─────────────────────────────────────────────
+  // Save customization unlocks
+  // ─────────────────────────────────────────────
+  app.post("/guild/:guildId/customization-unlocks", requireGuildAdmin, async (req, res) => {
+    try {
+      const guildId = req.params.guildId;
+      const { setCustomizationUnlock } = require("./settings");
+      const customizationOptions = [
+        "bgimage", "gradient", "bgcolor", "font", "border", "avatarframe"
+      ];
+      for (const key of customizationOptions) {
+        const val = parseInt(req.body[key], 10);
+        if (Number.isInteger(val) && val > 0) {
+          await setCustomizationUnlock(guildId, key, val);
         }
-        return res.redirect(`/guild/${guildId}`);
-      } catch (e) {
-        console.error("customization-unlocks save error:", e);
-        return res.status(500).send("Internal Server Error");
       }
-    });
+      return res.redirect(`/guild/${guildId}`);
+    } catch (e) {
+      console.error("customization-unlocks save error:", e);
+      return res.status(500).send("Internal Server Error");
+    }
+  });
+
+  // ─────────────────────────────────────────────
+  // Save moderation settings
+  // ─────────────────────────────────────────────
+  app.post("/guild/:guildId/mod-settings", requireGuildAdmin, async (req, res) => {
+    try {
+      const guildId = req.params.guildId;
+      const modRoleId = String(req.body.mod_role_id || "").trim() || null;
+      await updateGuildSettings(guildId, { mod_role_id: modRoleId });
+      return res.redirect(`/guild/${guildId}`);
+    } catch (e) {
+      console.error("mod-settings save error:", e);
+      return res.status(500).send("Internal Server Error");
+    }
+  });
+
+  // ─────────────────────────────────────────────
+  // XP manager (add/set)
+  // ─────────────────────────────────────────────
+  app.post("/guild/:guildId/xp/manage", requireGuildAdmin, async (req, res) => {
+    try {
+      const guildId = req.params.guildId;
+      const userId = String(req.body.user_id || "").trim();
+      const action = String(req.body.action || "").trim().toLowerCase();
+      const amount = Number.parseInt(String(req.body.amount || ""), 10);
+
+      if (!/^\d{15,21}$/.test(userId)) return res.status(400).send("Invalid user ID.");
+      if (!["add", "set"].includes(action)) return res.status(400).send("Invalid action.");
+      if (!Number.isFinite(amount)) return res.status(400).send("Amount must be a number.");
+
+      await run(
+        `INSERT INTO user_xp
+         (guild_id, user_id, xp, level, last_message_xp_at, last_reaction_xp_at)
+         VALUES (?, ?, 0, 0, 0, 0)
+         ON CONFLICT (guild_id, user_id) DO NOTHING`,
+        [guildId, userId]
+      );
+
+      const row = await get(
+        `SELECT xp FROM user_xp WHERE guild_id=? AND user_id=?`,
+        [guildId, userId]
+      );
+
+      const currentXp = Number(row?.xp || 0);
+      const newXp = action === "set" ? Math.max(0, amount) : Math.max(0, currentXp + amount);
+      const newLevel = levelFromXp(newXp);
+
+      await run(
+        `UPDATE user_xp SET xp=?, level=? WHERE guild_id=? AND user_id=?`,
+        [newXp, newLevel, guildId, userId]
+      );
+
+      return res.redirect(`/guild/${guildId}`);
+    } catch (e) {
+      console.error("xp manage error:", e);
+      return res.status(500).send("Internal Server Error");
+    }
+  });
+
+  // ─────────────────────────────────────────────
+  // Warning management
+  // ─────────────────────────────────────────────
+  app.post("/guild/:guildId/warnings/delete", requireGuildAdmin, async (req, res) => {
+    try {
+      const guildId = req.params.guildId;
+      const warningId = Number.parseInt(String(req.body.warning_id || ""), 10);
+      if (!Number.isFinite(warningId)) return res.status(400).send("Invalid warning ID.");
+
+      await run(`DELETE FROM mod_warnings WHERE guild_id=? AND id=?`, [guildId, warningId]);
+      return res.redirect(`/guild/${guildId}`);
+    } catch (e) {
+      console.error("warnings delete error:", e);
+      return res.status(500).send("Internal Server Error");
+    }
+  });
+
+  app.post("/guild/:guildId/warnings/clear-user", requireGuildAdmin, async (req, res) => {
+    try {
+      const guildId = req.params.guildId;
+      const userId = String(req.body.user_id || "").trim();
+      if (!/^\d{15,21}$/.test(userId)) return res.status(400).send("Invalid user ID.");
+
+      await run(`DELETE FROM mod_warnings WHERE guild_id=? AND user_id=?`, [guildId, userId]);
+      return res.redirect(`/guild/${guildId}`);
+    } catch (e) {
+      console.error("warnings clear-user error:", e);
+      return res.status(500).send("Internal Server Error");
+    }
+  });
+
+  // ─────────────────────────────────────────────
+  // Claim-all lock toggle
+  // ─────────────────────────────────────────────
+  app.post("/guild/:guildId/claim-lock", requireGuildAdmin, async (req, res) => {
+    try {
+      const guildId = req.params.guildId;
+      const lockValue = Number.parseInt(String(req.body.claim_all_done || "0"), 10) === 1 ? 1 : 0;
+      await run(
+        `INSERT INTO guild_settings (guild_id, claim_all_done)
+         VALUES (?, ?)
+         ON CONFLICT (guild_id) DO UPDATE SET claim_all_done=EXCLUDED.claim_all_done`,
+        [guildId, lockValue]
+      );
+      return res.redirect(`/guild/${guildId}`);
+    } catch (e) {
+      console.error("claim-lock save error:", e);
+      return res.status(500).send("Internal Server Error");
+    }
+  });
+
+  // ─────────────────────────────────────────────
+  // Private room record cleanup
+  // ─────────────────────────────────────────────
+  app.post("/guild/:guildId/private-rooms/delete", requireGuildAdmin, async (req, res) => {
+    try {
+      const guildId = req.params.guildId;
+      const voiceChannelId = String(req.body.voice_channel_id || "").trim();
+      if (!voiceChannelId) return res.status(400).send("Voice channel ID required.");
+
+      await run(
+        `DELETE FROM private_voice_rooms WHERE guild_id=? AND voice_channel_id=?`,
+        [guildId, voiceChannelId]
+      );
+      return res.redirect(`/guild/${guildId}`);
+    } catch (e) {
+      console.error("private room delete error:", e);
+      return res.status(500).send("Internal Server Error");
+    }
   });
 
   // ─────────────────────────────────────────────
   // Save XP settings
   // ─────────────────────────────────────────────
-  app.post("/guild/:guildId/settings", mustBeLoggedIn, async (req, res) => {
+  app.post("/guild/:guildId/settings", requireGuildAdmin, async (req, res) => {
     try {
       const guildId = req.params.guildId;
 
@@ -2865,7 +3212,7 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
   // ─────────────────────────────────────────────
   // Save level-up settings (channel + message)
   // ─────────────────────────────────────────────
-  app.post("/guild/:guildId/levelup-settings", mustBeLoggedIn, async (req, res) => {
+  app.post("/guild/:guildId/levelup-settings", requireGuildAdmin, async (req, res) => {
     try {
       const guildId = req.params.guildId;
 
@@ -2887,7 +3234,7 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
   // ─────────────────────────────────────────────
   // Test level-up message (decoy, no XP changes)
   // ─────────────────────────────────────────────
-  app.post("/guild/:guildId/test-levelup", mustBeLoggedIn, async (req, res) => {
+  app.post("/guild/:guildId/test-levelup", requireGuildAdmin, async (req, res) => {
     try {
       const guildId = req.params.guildId;
       const guild = client.guilds.cache.get(guildId);
@@ -2933,7 +3280,7 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
   // ─────────────────────────────────────────────
   // Level roles
   // ─────────────────────────────────────────────
-  app.post("/guild/:guildId/level-roles", mustBeLoggedIn, async (req, res) => {
+  app.post("/guild/:guildId/level-roles", requireGuildAdmin, async (req, res) => {
     try {
       const guildId = req.params.guildId;
       const level = parseInt(req.body.level, 10);
@@ -2950,7 +3297,7 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
     }
   });
 
-  app.post("/guild/:guildId/level-roles/delete", mustBeLoggedIn, async (req, res) => {
+  app.post("/guild/:guildId/level-roles/delete", requireGuildAdmin, async (req, res) => {
     try {
       const guildId = req.params.guildId;
       const level = parseInt(req.body.level, 10);
@@ -2966,11 +3313,17 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
 
   // Ignored channels
   // ─────────────────────────────────────────────
-  app.post("/guild/:guildId/ignored-channels", mustBeLoggedIn, async (req, res) => {
+  app.post("/guild/:guildId/ignored-channels", requireGuildAdmin, async (req, res) => {
     try {
       const guildId = req.params.guildId;
-      const channelId = String(req.body.channel_id || "").trim();
+      const manualChannelId = String(req.body.channel_id || "").trim();
+      const selectedTextChannelId = String(req.body.text_channel_id || "").trim();
+      const selectedVoiceChannelId = String(req.body.voice_channel_id || "").trim();
       const channelType = String(req.body.channel_type || "").trim();
+
+      let channelId = manualChannelId;
+      if (!channelId && channelType === "text") channelId = selectedTextChannelId;
+      if (!channelId && channelType === "voice") channelId = selectedVoiceChannelId;
 
       if (!channelId) return res.status(400).send("Channel ID required.");
       if (!["text", "voice"].includes(channelType)) return res.status(400).send("Invalid channel type.");
@@ -2983,7 +3336,7 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
     }
   });
 
-  app.post("/guild/:guildId/ignored-channels/delete", mustBeLoggedIn, async (req, res) => {
+  app.post("/guild/:guildId/ignored-channels/delete", requireGuildAdmin, async (req, res) => {
     try {
       const guildId = req.params.guildId;
       const channelId = String(req.body.channel_id || "").trim();
