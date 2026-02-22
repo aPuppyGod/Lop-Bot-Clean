@@ -982,9 +982,26 @@ async function cmdPurge(message, args) {
     return;
   }
 
-  const deleted = await message.channel.bulkDelete(amount, true).catch(() => null);
-  trackModerationAction(message, "message_bulk_delete", { channelId: message.channel.id, count: deleted?.size || amount });
-  await message.reply(`✅ Purged ${deleted?.size || 0} messages.`).catch(() => {});
+  const isInteractionCommand = Boolean(message.isSyntheticInteraction);
+
+  let commandDeleted = false;
+  if (!isInteractionCommand && typeof message.delete === "function") {
+    commandDeleted = await message.delete().then(() => true).catch(() => false);
+  }
+
+  const fetchCount = Math.min(100, amount + (commandDeleted ? 0 : 1));
+  const deleted = await message.channel.bulkDelete(fetchCount, true).catch(() => null);
+
+  let purgedCount = deleted?.size || 0;
+  if (!commandDeleted && deleted?.has?.(message.id)) {
+    purgedCount = Math.max(0, purgedCount - 1);
+  }
+
+  trackModerationAction(message, "message_bulk_delete", { channelId: message.channel.id, count: purgedCount || amount });
+
+  if (isInteractionCommand) {
+    await message.reply(`✅ Purged ${purgedCount} messages.`).catch(() => {});
+  }
 }
 
 async function cmdWarn(message, args) {
@@ -1756,6 +1773,7 @@ function buildSyntheticMessage(interaction, cmdName, args) {
     channel: interaction.channel,
     author: interaction.user,
     client: interaction.client,
+    isSyntheticInteraction: true,
     content: `!${cmdName} ${args.join(" ")}`.trim(),
     mentions: {
       users: { first: () => null },
