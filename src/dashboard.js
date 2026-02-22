@@ -2831,6 +2831,10 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
           </select>
         </label>
         <br/><br/>
+        <label>Command Prefix
+          <input name="command_prefix" value="${escapeHtml(settings.command_prefix || "!")}" style="max-width:80px;" />
+        </label>
+        <br/><br/>
         <label>Log Channel
           <select name="log_channel_id">
             <option value="" ${!settings.log_channel_id ? "selected" : ""}>None</option>
@@ -3115,7 +3119,15 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
       const guildId = req.params.guildId;
       const modRoleId = String(req.body.mod_role_id || "").trim() || null;
       const logChannelId = String(req.body.log_channel_id || "").trim() || null;
-      await updateGuildSettings(guildId, { mod_role_id: modRoleId, log_channel_id: logChannelId });
+      const commandPrefixRaw = String(req.body.command_prefix || "!").trim();
+      const commandPrefix = (!commandPrefixRaw || commandPrefixRaw.length > 3 || /\s/.test(commandPrefixRaw))
+        ? "!"
+        : commandPrefixRaw;
+      await updateGuildSettings(guildId, {
+        mod_role_id: modRoleId,
+        log_channel_id: logChannelId,
+        command_prefix: commandPrefix
+      });
       return res.redirect(`/guild/${guildId}`);
     } catch (e) {
       console.error("mod-settings save error:", e);

@@ -206,6 +206,7 @@ async function initDb() {
       reaction_xp INTEGER DEFAULT 3,
       reaction_cooldown_seconds INTEGER DEFAULT 30,
       voice_xp_per_minute INTEGER DEFAULT 5,
+      command_prefix TEXT DEFAULT '!',
       mod_role_id TEXT DEFAULT NULL,
       log_channel_id TEXT DEFAULT NULL,
 
@@ -322,6 +323,7 @@ async function initDb() {
     await run(`ALTER TABLE user_rankcard_customizations ADD COLUMN IF NOT EXISTS borderglow TEXT DEFAULT 'none'`);
     await run(`ALTER TABLE user_rankcard_customizations ADD COLUMN IF NOT EXISTS bgmode TEXT`);
     await run(`ALTER TABLE user_rankcard_customizations ADD COLUMN IF NOT EXISTS bgimage_data BYTEA`);
+    await run(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS command_prefix TEXT DEFAULT '!'`);
     await run(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS mod_role_id TEXT DEFAULT NULL`);
     await run(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS log_channel_id TEXT DEFAULT NULL`);
   } catch (e) {

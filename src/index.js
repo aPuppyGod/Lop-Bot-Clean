@@ -18,6 +18,7 @@ const { getGuildSettings } = require("./settings");
 const { getLevelRoles } = require("./settings");
 const { getIgnoredChannels } = require("./settings");
 const { getLoggingExclusions } = require("./settings");
+const { findRecentModAction } = require("./modActionTracker");
 const { startDashboard } = require("./dashboard");
 const unidecode = require('unidecode');
 
@@ -118,6 +119,23 @@ function userLabel(userLike) {
 function channelLabel(channel) {
   if (!channel) return "Unknown channel";
   return `#${channel.name || channel.id} (${channel.id})`;
+}
+
+async function labelFromUserId(guild, userId) {
+  if (!guild || !userId) return null;
+  const member = guild.members.cache.get(userId) || await guild.members.fetch(userId).catch(() => null);
+  const user = member?.user || (await guild.client.users.fetch(userId).catch(() => null));
+  return user ? userLabel(user) : `<@${userId}> (${userId})`;
+}
+
+async function resolveActionActorLabel(guild, auditExecutor, trackedActorId) {
+  if (trackedActorId && (!auditExecutor || auditExecutor.bot)) {
+    const tracked = await labelFromUserId(guild, trackedActorId);
+    if (tracked) return tracked;
+  }
+  if (auditExecutor) return userLabel(auditExecutor);
+  if (trackedActorId) return await labelFromUserId(guild, trackedActorId);
+  return "Unknown";
 }
 
 async function getAuditExecutor(guild, type, targetId) {
@@ -557,6 +575,13 @@ client.on(Events.MessageBulkDelete, async (messages, channel) => {
   if (!guild) return;
 
   const executor = await getAuditExecutor(guild, AuditLogEvent.MessageBulkDelete, null);
+  const tracked = findRecentModAction({
+    guildId: guild.id,
+    action: "message_bulk_delete",
+    matcher: (data) => data?.channelId === channel?.id,
+    ttlMs: 60_000
+  });
+  const actorLabel = await resolveActionActorLabel(guild, executor, tracked?.actorId);
   const preview = messages
     .first(5)
     .map((msg) => `${msg.author ? msg.author.username : "Unknown"}: ${trimText(msg.content || "(no text)", 120)}`)
@@ -568,7 +593,7 @@ client.on(Events.MessageBulkDelete, async (messages, channel) => {
     sourceChannelId: channel?.id,
     description: `${messages.size} messages were purged in ${channel ? `<#${channel.id}>` : "unknown channel"}.`,
     fields: [
-      { name: "Purged By", value: executor ? userLabel(executor) : "Unknown", inline: true },
+      { name: "Purged By", value: actorLabel, inline: true },
       { name: "Message Count", value: String(messages.size), inline: true },
       { name: "Sample", value: preview || "No message preview available." }
     ]
@@ -641,6 +666,13 @@ client.on(Events.GuildMemberAdd, async (member) => {
 client.on(Events.GuildMemberRemove, async (member) => {
   const executor = await getAuditExecutor(member.guild, AuditLogEvent.MemberKick, member.id)
     || await getAuditExecutor(member.guild, AuditLogEvent.MemberBanAdd, member.id);
+  const tracked = findRecentModAction({
+    guildId: member.guild.id,
+    action: "member_remove",
+    matcher: (data) => data?.targetUserId === member.id,
+    ttlMs: 60_000
+  });
+  const actorLabel = await resolveActionActorLabel(member.guild, executor, tracked?.actorId);
 
   await sendGuildLog(member.guild, {
     color: LOG_THEME.warn,
@@ -648,28 +680,42 @@ client.on(Events.GuildMemberRemove, async (member) => {
     description: `${member.user?.tag || member.id} left or was removed.`,
     fields: [
       { name: "User", value: userLabel(member.user), inline: true },
-      { name: "Action By", value: executor ? userLabel(executor) : "Unknown", inline: true }
+      { name: "Action By", value: actorLabel, inline: true }
     ]
   });
 });
 
 client.on(Events.GuildBanAdd, async (ban) => {
   const executor = await getAuditExecutor(ban.guild, AuditLogEvent.MemberBanAdd, ban.user.id);
+  const tracked = findRecentModAction({
+    guildId: ban.guild.id,
+    action: "ban_add",
+    matcher: (data) => data?.targetUserId === ban.user.id,
+    ttlMs: 60_000
+  });
+  const actorLabel = await resolveActionActorLabel(ban.guild, executor, tracked?.actorId);
   await sendGuildLog(ban.guild, {
     color: LOG_THEME.mod,
     title: "⛔ Member Banned",
     description: `${userLabel(ban.user)} was banned.`,
-    fields: [{ name: "Moderator", value: executor ? userLabel(executor) : "Unknown", inline: true }]
+    fields: [{ name: "Moderator", value: actorLabel, inline: true }]
   });
 });
 
 client.on(Events.GuildBanRemove, async (ban) => {
   const executor = await getAuditExecutor(ban.guild, AuditLogEvent.MemberBanRemove, ban.user.id);
+  const tracked = findRecentModAction({
+    guildId: ban.guild.id,
+    action: "ban_remove",
+    matcher: (data) => data?.targetUserId === ban.user.id,
+    ttlMs: 60_000
+  });
+  const actorLabel = await resolveActionActorLabel(ban.guild, executor, tracked?.actorId);
   await sendGuildLog(ban.guild, {
     color: LOG_THEME.mod,
     title: "✅ Member Unbanned",
     description: `${userLabel(ban.user)} was unbanned.`,
-    fields: [{ name: "Moderator", value: executor ? userLabel(executor) : "Unknown", inline: true }]
+    fields: [{ name: "Moderator", value: actorLabel, inline: true }]
   });
 });
 
@@ -683,6 +729,13 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
 
   if (added.length || removed.length) {
     const executor = await getAuditExecutor(newMember.guild, AuditLogEvent.MemberRoleUpdate, newMember.id);
+    const tracked = findRecentModAction({
+      guildId: newMember.guild.id,
+      action: "member_role_update",
+      matcher: (data) => data?.targetUserId === newMember.id,
+      ttlMs: 60_000
+    });
+    const actorLabel = await resolveActionActorLabel(newMember.guild, executor, tracked?.actorId);
     await sendGuildLog(newMember.guild, {
       color: LOG_THEME.mod,
       title: "🧩 Roles Updated",
@@ -690,19 +743,27 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
       fields: [
         { name: "Added", value: added.length ? added.map((id) => `<@&${id}>`).join(", ") : "None" },
         { name: "Removed", value: removed.length ? removed.map((id) => `<@&${id}>`).join(", ") : "None" },
-        { name: "Updated By", value: executor ? userLabel(executor) : "Unknown", inline: true }
+        { name: "Updated By", value: actorLabel, inline: true }
       ]
     });
   }
 
   if ((oldMember.nickname || "") !== (newMember.nickname || "")) {
+    const tracked = findRecentModAction({
+      guildId: newMember.guild.id,
+      action: "member_nick_update",
+      matcher: (data) => data?.targetUserId === newMember.id,
+      ttlMs: 60_000
+    });
+    const actorLabel = tracked?.actorId ? await labelFromUserId(newMember.guild, tracked.actorId) : "Unknown";
     await sendGuildLog(newMember.guild, {
       color: LOG_THEME.info,
       title: "📝 Nickname Changed",
       description: `${newMember} nickname updated.`,
       fields: [
         { name: "Before", value: oldMember.nickname || "(none)", inline: true },
-        { name: "After", value: newMember.nickname || "(none)", inline: true }
+        { name: "After", value: newMember.nickname || "(none)", inline: true },
+        { name: "Updated By", value: actorLabel || "Unknown", inline: true }
       ]
     });
   }
@@ -710,11 +771,21 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
   const oldTimeout = oldMember.communicationDisabledUntilTimestamp || null;
   const newTimeout = newMember.communicationDisabledUntilTimestamp || null;
   if (oldTimeout !== newTimeout) {
+    const tracked = findRecentModAction({
+      guildId: newMember.guild.id,
+      action: "member_timeout",
+      matcher: (data) => data?.targetUserId === newMember.id && data?.timedOut === Boolean(newTimeout),
+      ttlMs: 60_000
+    });
+    const actorLabel = tracked?.actorId ? await labelFromUserId(newMember.guild, tracked.actorId) : "Unknown";
     await sendGuildLog(newMember.guild, {
       color: LOG_THEME.mod,
       title: newTimeout ? "🔇 Member Muted" : "🔊 Member Unmuted",
       description: `${newMember} ${newTimeout ? "was muted (timed out)" : "was unmuted"}.`,
-      fields: newTimeout ? [{ name: "Until", value: `<t:${Math.floor(newTimeout / 1000)}:F>` }] : []
+      fields: [
+        ...(newTimeout ? [{ name: "Until", value: `<t:${Math.floor(newTimeout / 1000)}:F>` }] : []),
+        { name: "Moderator", value: actorLabel || "Unknown", inline: true }
+      ]
     });
   }
 });
@@ -741,14 +812,33 @@ client.on(Events.ChannelDelete, async (channel) => {
 
 client.on(Events.ChannelUpdate, async (oldChannel, newChannel) => {
   if (!newChannel.guild) return;
-  if (oldChannel.name === newChannel.name) return;
+  const nameChanged = oldChannel.name !== newChannel.name;
+  const slowmodeChanged = oldChannel.rateLimitPerUser !== newChannel.rateLimitPerUser;
+  const permsChanged = JSON.stringify(oldChannel.permissionOverwrites.cache.map((o) => [o.id, o.allow.bitfield.toString(), o.deny.bitfield.toString()]))
+    !== JSON.stringify(newChannel.permissionOverwrites.cache.map((o) => [o.id, o.allow.bitfield.toString(), o.deny.bitfield.toString()]));
+  if (!nameChanged && !slowmodeChanged && !permsChanged) return;
+
+  const tracked = findRecentModAction({
+    guildId: newChannel.guild.id,
+    action: "channel_update",
+    matcher: (data) => data?.channelId === newChannel.id,
+    ttlMs: 60_000
+  });
+  const actorLabel = tracked?.actorId ? await labelFromUserId(newChannel.guild, tracked.actorId) : "Unknown";
+
+  const changeLines = [];
+  if (nameChanged) changeLines.push(`Name: ${oldChannel.name || "(unknown)"} → ${newChannel.name || "(unknown)"}`);
+  if (slowmodeChanged) changeLines.push(`Slowmode: ${oldChannel.rateLimitPerUser || 0}s → ${newChannel.rateLimitPerUser || 0}s`);
+  if (permsChanged) changeLines.push("Permissions/overwrites changed");
+
   await sendGuildLog(newChannel.guild, {
     color: LOG_THEME.info,
     title: "🛠️ Channel Updated",
     sourceChannelId: newChannel.id,
     description: `${channelLabel(newChannel)} was updated.`,
     fields: [
-      { name: "Name", value: `${oldChannel.name || "(unknown)"} → ${newChannel.name || "(unknown)"}` }
+      { name: "Changes", value: changeLines.join("\n") || "Updated" },
+      { name: "Updated By", value: actorLabel || "Unknown", inline: true }
     ]
   });
 });

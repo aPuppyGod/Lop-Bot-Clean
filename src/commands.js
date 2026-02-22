@@ -7,10 +7,12 @@ const { createCanvas, loadImage, registerFont } = require("canvas");
 registerFont(require('path').join(__dirname, '..', 'assets', 'Open_Sans', 'static', 'OpenSans-Regular.ttf'), { family: 'OpenSans' });
 const { getLevelRoles, getGuildSettings } = require("./settings");
 const { joinMemberVoiceChannel, speakTextInVoice } = require("./voiceTts");
+const { recordModAction } = require("./modActionTracker");
 const fs = require("fs");
 const path = require("path");
 
-const PREFIXES = ["!", "?"];
+const DEFAULT_PREFIX = "!";
+const LEGACY_PREFIX = "?";
 const BOT_MANAGER_ID = process.env.BOT_MANAGER_ID || "900758140499398676";
 
 const MODERATION_PERMISSION = PermissionsBitField.Flags.ModerateMembers;
@@ -95,8 +97,8 @@ async function assertVoiceCmdAllowed(message) {
 // Parsing helpers
 // ─────────────────────────────────────────────────────
 
-function parseCommand(content) {
-  const matchedPrefix = PREFIXES.find((p) => content.startsWith(p));
+function parseCommand(content, prefixes) {
+  const matchedPrefix = prefixes.find((p) => content.startsWith(p));
   if (!matchedPrefix) return null;
 
   const without = content.slice(matchedPrefix.length).trim();
@@ -107,6 +109,19 @@ function parseCommand(content) {
   const args = parts;
 
   return { cmd, args, prefix: matchedPrefix };
+}
+
+async function getActivePrefixes(message) {
+  const configured = (await getGuildSettings(message.guild.id).catch(() => null))?.command_prefix || DEFAULT_PREFIX;
+  const prefix = String(configured || DEFAULT_PREFIX).trim() || DEFAULT_PREFIX;
+  const list = [prefix];
+  if (prefix !== LEGACY_PREFIX) list.push(LEGACY_PREFIX);
+  return list;
+}
+
+function trackModerationAction(message, action, data = {}) {
+  if (!message?.guild?.id || !message?.author?.id) return;
+  recordModAction({ guildId: message.guild.id, action, actorId: message.author.id, data });
 }
 
 
@@ -313,6 +328,23 @@ async function cmdSetModRole(message, args) {
   await run(`INSERT INTO guild_settings (guild_id) VALUES (?) ON CONFLICT (guild_id) DO NOTHING`, [message.guild.id]);
   await run(`UPDATE guild_settings SET mod_role_id=? WHERE guild_id=?`, [role.id, message.guild.id]);
   await message.reply(`✅ Mod role set to ${role}.`).catch(() => {});
+}
+
+async function cmdPrefix(message, args) {
+  if (!isAdminOrManager(message.member)) {
+    await message.reply("Only admins/managers can change the prefix.").catch(() => {});
+    return;
+  }
+
+  const raw = (args[0] || "").trim();
+  if (!raw || raw.length > 3 || /\s/.test(raw)) {
+    await message.reply("Usage: `prefix <new-prefix>` (1-3 chars, no spaces)").catch(() => {});
+    return;
+  }
+
+  await run(`INSERT INTO guild_settings (guild_id) VALUES (?) ON CONFLICT (guild_id) DO NOTHING`, [message.guild.id]);
+  await run(`UPDATE guild_settings SET command_prefix=? WHERE guild_id=?`, [raw, message.guild.id]);
+  await message.reply(`✅ Prefix updated to \`${raw}\``).catch(() => {});
 }
 
 async function cmdRank(message, args) {
@@ -862,6 +894,7 @@ async function cmdBan(message, args) {
   }
 
   const reason = args.slice(1).join(" ").trim() || "No reason provided";
+  trackModerationAction(message, "ban_add", { targetUserId: target.id });
   await target.ban({ reason }).catch(() => {});
   await message.reply(`✅ Banned ${target.user.tag}.`).catch(() => {});
 }
@@ -874,6 +907,7 @@ async function cmdUnban(message, args) {
     return;
   }
   const reason = args.slice(1).join(" ").trim() || "No reason provided";
+  trackModerationAction(message, "ban_remove", { targetUserId: userId });
   await message.guild.members.unban(userId, reason).catch(() => {});
   await message.reply("✅ Unbanned user.").catch(() => {});
 }
@@ -894,6 +928,7 @@ async function cmdKick(message, args) {
   }
 
   const reason = args.slice(1).join(" ").trim() || "No reason provided";
+  trackModerationAction(message, "member_remove", { targetUserId: target.id });
   await target.kick(reason).catch(() => {});
   await message.reply(`✅ Kicked ${target.user.tag}.`).catch(() => {});
 }
@@ -914,6 +949,7 @@ async function cmdMute(message, args) {
     await message.reply("I can't mute that user.").catch(() => {});
     return;
   }
+  trackModerationAction(message, "member_timeout", { targetUserId: target.id, timedOut: true });
   await target.timeout(durationMs, reason).catch(() => {});
   await message.reply(`✅ Muted ${target.user.tag}.`).catch(() => {});
 }
@@ -933,6 +969,7 @@ async function cmdUnmute(message, args) {
     await message.reply("I can't unmute that user.").catch(() => {});
     return;
   }
+  trackModerationAction(message, "member_timeout", { targetUserId: target.id, timedOut: false });
   await target.timeout(null, reason).catch(() => {});
   await message.reply(`✅ Unmuted ${target.user.tag}.`).catch(() => {});
 }
@@ -946,6 +983,7 @@ async function cmdPurge(message, args) {
   }
 
   const deleted = await message.channel.bulkDelete(amount, true).catch(() => null);
+  trackModerationAction(message, "message_bulk_delete", { channelId: message.channel.id, count: deleted?.size || amount });
   await message.reply(`✅ Purged ${deleted?.size || 0} messages.`).catch(() => {});
 }
 
@@ -1004,6 +1042,7 @@ async function cmdClearWarns(message, args) {
 
 async function cmdLock(message) {
   if (!(await requireModerator(message))) return;
+  trackModerationAction(message, "channel_update", { channelId: message.channel.id });
   await message.channel.permissionOverwrites.edit(message.guild.roles.everyone, {
     SendMessages: false
   }).catch(() => {});
@@ -1012,6 +1051,7 @@ async function cmdLock(message) {
 
 async function cmdUnlock(message) {
   if (!(await requireModerator(message))) return;
+  trackModerationAction(message, "channel_update", { channelId: message.channel.id });
   await message.channel.permissionOverwrites.edit(message.guild.roles.everyone, {
     SendMessages: true
   }).catch(() => {});
@@ -1025,6 +1065,7 @@ async function cmdSlowmode(message, args) {
     await message.reply("Usage: `?slowmode <0-21600>`").catch(() => {});
     return;
   }
+  trackModerationAction(message, "channel_update", { channelId: message.channel.id });
   await message.channel.setRateLimitPerUser(seconds).catch(() => {});
   await message.reply(`✅ Slowmode set to ${seconds}s.`).catch(() => {});
 }
@@ -1045,6 +1086,7 @@ async function cmdNick(message, args) {
   }
 
   await pick.member.setNickname(nick.slice(0, 32)).catch(() => {});
+  trackModerationAction(message, "member_nick_update", { targetUserId: pick.member.id });
   await message.reply(`✅ Updated nickname for ${pick.member.user.tag}.`).catch(() => {});
 }
 
@@ -1070,11 +1112,13 @@ async function cmdRole(message, args) {
   }
 
   if (pick.member.roles.cache.has(role.id)) {
+    trackModerationAction(message, "member_role_update", { targetUserId: pick.member.id });
     await pick.member.roles.remove(role).catch(() => {});
     await message.reply(`✅ Removed ${role.name} from ${pick.member.user.tag}.`).catch(() => {});
     return;
   }
 
+  trackModerationAction(message, "member_role_update", { targetUserId: pick.member.id });
   await pick.member.roles.add(role).catch(() => {});
   await message.reply(`✅ Added ${role.name} to ${pick.member.user.tag}.`).catch(() => {});
 }
@@ -1094,7 +1138,9 @@ async function cmdSoftban(message, args) {
     return;
   }
   const reason = args.slice(1).join(" ").trim() || "No reason provided";
+  trackModerationAction(message, "ban_add", { targetUserId: target.id });
   await target.ban({ reason, deleteMessageSeconds: 24 * 60 * 60 }).catch(() => {});
+  trackModerationAction(message, "ban_remove", { targetUserId: target.id });
   await message.guild.members.unban(target.id, "Softban release").catch(() => {});
   await message.reply(`✅ Softbanned ${target.user.tag}.`).catch(() => {});
 }
@@ -1438,7 +1484,9 @@ async function handleCommands(message) {
     return true;
   }
 
-  const parsed = parseCommand(message.content);
+  if (!message.guild) return false;
+  const activePrefixes = await getActivePrefixes(message);
+  const parsed = parseCommand(message.content, activePrefixes);
   if (!parsed) return false;
 
   return await executeCommand(message, parsed.cmd, parsed.args, parsed.prefix);
@@ -1477,6 +1525,11 @@ async function executeCommand(message, cmd, args, prefix) {
 
   if (cmd === "mod-role") {
     await cmdSetModRole(message, args);
+    return true;
+  }
+
+  if (cmd === "prefix") {
+    await cmdPrefix(message, args);
     return true;
   }
 
@@ -1653,6 +1706,7 @@ function buildSlashCommands() {
     { name: "mod-commands", description: "Moderation commands list", default_member_permissions: slashPerm(DEFAULT_MOD_COMMAND_PERMISSION) },
     { name: "admin-commands", description: "Admin commands list", default_member_permissions: slashPerm(PermissionsBitField.Flags.Administrator) },
     { name: "mod-role", description: "Set mod role", default_member_permissions: slashPerm(PermissionsBitField.Flags.Administrator), options: [{ type: 8, name: "role", description: "Role", required: true }] },
+    { name: "prefix", description: "Set command prefix", default_member_permissions: slashPerm(PermissionsBitField.Flags.Administrator), options: [{ type: 3, name: "value", description: "New prefix (1-3 chars)", required: true }] },
     { name: "lop-bot", description: "Get website URL" },
     { name: "rank", description: "Show rank", options: [{ type: 6, name: "user", description: "User", required: false }] },
     { name: "leaderboard", description: "Show leaderboard", options: [{ type: 4, name: "page", description: "Page", required: false }] },
@@ -1763,6 +1817,9 @@ async function handleSlashCommand(interaction) {
     if (nick) args.push(...String(nick).split(/\s+/));
   } else if (name === "mod-role") {
     if (roleOption) args.push(roleOption.id);
+  } else if (name === "prefix") {
+    const value = optionValue(interaction, "value");
+    if (value) args.push(String(value));
   } else {
     const keys = ["page", "limit", "name", "count", "seconds"];
     for (const key of keys) {
