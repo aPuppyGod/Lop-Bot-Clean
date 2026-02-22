@@ -558,7 +558,10 @@ const {
   setLevelRole,
   deleteLevelRole,
   addIgnoredChannel,
-  removeIgnoredChannel
+  removeIgnoredChannel,
+  getLoggingExclusions,
+  addLoggingExclusion,
+  removeLoggingExclusion
 } = require("./settings");
 const { ChannelType } = require("discord.js");
 
@@ -2735,6 +2738,10 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
       .filter((c) => c.type === ChannelType.GuildVoice || c.type === ChannelType.GuildStageVoice)
       .map((c) => ({ id: c.id, name: c.name }))
       .sort((a, b) => a.name.localeCompare(b.name));
+    const categories = guild.channels.cache
+      .filter((c) => c.type === ChannelType.GuildCategory)
+      .map((c) => ({ id: c.id, name: c.name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
 
     await guild.roles.fetch().catch(() => {});
     await guild.members.fetch().catch(() => {});
@@ -2770,6 +2777,7 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
 
     const claimLock = await get(`SELECT claim_all_done FROM guild_settings WHERE guild_id=?`, [guildId]);
     const claimLocked = claimLock?.claim_all_done === 1;
+    const loggingExclusions = await getLoggingExclusions(guildId);
 
     const topUsers = await all(
       `SELECT user_id, xp, level FROM user_xp WHERE guild_id=? ORDER BY xp DESC LIMIT 20`,
@@ -2832,6 +2840,42 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
         <br/><br/>
         <button type="submit">Save Moderation Settings</button>
       </form>
+
+      <h3>Logging Exclusions</h3>
+      <form method="post" action="/guild/${guildId}/logging-exclusions/add">
+        <label>Channel
+          <select name="channel_id">
+            <option value="">None</option>
+            ${textChannels.map((c) => `<option value="${c.id}">#${escapeHtml(c.name)} (${c.id})</option>`).join("")}
+            ${voiceChannels.map((c) => `<option value="${c.id}">${escapeHtml(c.name)} (${c.id})</option>`).join("")}
+          </select>
+        </label>
+        <label>Category
+          <select name="category_id">
+            <option value="">None</option>
+            ${categories.map((c) => `<option value="${c.id}">${escapeHtml(c.name)} (${c.id})</option>`).join("")}
+          </select>
+        </label>
+        <button type="submit">Add Exclusion</button>
+      </form>
+      <p style="margin-top:6px;opacity:0.8;">The log channel is always auto-excluded.</p>
+
+      <ul>
+        ${loggingExclusions.map((entry) => {
+          const label = entry.target_type === "category"
+            ? (categories.find((c) => c.id === entry.target_id)?.name || entry.target_id)
+            : (guild.channels.cache.get(entry.target_id)?.name || entry.target_id);
+          return `
+            <li>
+              ${escapeHtml(entry.target_type)} → ${escapeHtml(label)} (${escapeHtml(entry.target_id)})
+              <form style="display:inline" method="post" action="/guild/${guildId}/logging-exclusions/delete">
+                <input type="hidden" name="target_id" value="${escapeHtml(entry.target_id)}" />
+                <button type="submit">Delete</button>
+              </form>
+            </li>
+          `;
+        }).join("")}
+      </ul>
 
       <hr/>
 
@@ -3075,6 +3119,39 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
       return res.redirect(`/guild/${guildId}`);
     } catch (e) {
       console.error("mod-settings save error:", e);
+      return res.status(500).send("Internal Server Error");
+    }
+  });
+
+  app.post("/guild/:guildId/logging-exclusions/add", requireGuildAdmin, async (req, res) => {
+    try {
+      const guildId = req.params.guildId;
+      const channelId = String(req.body.channel_id || "").trim();
+      const categoryId = String(req.body.category_id || "").trim();
+
+      if (channelId) {
+        await addLoggingExclusion(guildId, channelId, "channel");
+      }
+      if (categoryId) {
+        await addLoggingExclusion(guildId, categoryId, "category");
+      }
+
+      return res.redirect(`/guild/${guildId}`);
+    } catch (e) {
+      console.error("logging-exclusions add error:", e);
+      return res.status(500).send("Internal Server Error");
+    }
+  });
+
+  app.post("/guild/:guildId/logging-exclusions/delete", requireGuildAdmin, async (req, res) => {
+    try {
+      const guildId = req.params.guildId;
+      const targetId = String(req.body.target_id || "").trim();
+      if (!targetId) return res.status(400).send("Target ID required.");
+      await removeLoggingExclusion(guildId, targetId);
+      return res.redirect(`/guild/${guildId}`);
+    } catch (e) {
+      console.error("logging-exclusions delete error:", e);
       return res.status(500).send("Internal Server Error");
     }
   });

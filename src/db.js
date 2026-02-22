@@ -284,6 +284,16 @@ async function initDb() {
     )
   `);
 
+  // Logging exclusions (channels/categories to skip logging)
+  await run(`
+    CREATE TABLE IF NOT EXISTS logging_exclusions (
+      guild_id TEXT NOT NULL,
+      target_id TEXT NOT NULL,
+      target_type TEXT NOT NULL,
+      PRIMARY KEY (guild_id, target_id)
+    )
+  `);
+
   // User rank card customizations
   await run(`
     CREATE TABLE IF NOT EXISTS user_rankcard_customizations (

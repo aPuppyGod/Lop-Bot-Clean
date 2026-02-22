@@ -119,6 +119,32 @@ async function removeIgnoredChannel(guildId, channelId) {
   );
 }
 
+async function getLoggingExclusions(guildId) {
+  return await all(
+    `SELECT target_id, target_type
+     FROM logging_exclusions
+     WHERE guild_id=?
+     ORDER BY target_type, target_id`,
+    [guildId]
+  );
+}
+
+async function addLoggingExclusion(guildId, targetId, targetType) {
+  await run(
+    `INSERT INTO logging_exclusions (guild_id, target_id, target_type)
+     VALUES (?, ?, ?)
+     ON CONFLICT (guild_id, target_id) DO UPDATE SET target_type=EXCLUDED.target_type`,
+    [guildId, targetId, targetType]
+  );
+}
+
+async function removeLoggingExclusion(guildId, targetId) {
+  await run(
+    `DELETE FROM logging_exclusions WHERE guild_id=? AND target_id=?`,
+    [guildId, targetId]
+  );
+}
+
 module.exports = {
   getGuildSettings,
   updateGuildSettings,
@@ -128,6 +154,9 @@ module.exports = {
   getIgnoredChannels,
   addIgnoredChannel,
   removeIgnoredChannel,
+  getLoggingExclusions,
+  addLoggingExclusion,
+  removeLoggingExclusion,
 
   // Customization unlocks
   getCustomizationUnlocks,

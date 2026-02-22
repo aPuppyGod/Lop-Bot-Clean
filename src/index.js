@@ -17,6 +17,7 @@ const { onVoiceStateUpdate, cleanupPrivateRooms } = require("./voiceRooms");
 const { getGuildSettings } = require("./settings");
 const { getLevelRoles } = require("./settings");
 const { getIgnoredChannels } = require("./settings");
+const { getLoggingExclusions } = require("./settings");
 const { startDashboard } = require("./dashboard");
 const unidecode = require('unidecode');
 
@@ -139,6 +140,27 @@ async function sendGuildLog(guild, payload) {
   const settings = await getGuildSettings(guild.id).catch(() => null);
   const channelId = settings?.log_channel_id;
   if (!channelId) return;
+
+  const sourceIdsRaw = Array.isArray(payload?.sourceChannelIds)
+    ? payload.sourceChannelIds
+    : payload?.sourceChannelId
+      ? [payload.sourceChannelId]
+      : [];
+  const sourceIds = sourceIdsRaw.filter(Boolean);
+
+  if (sourceIds.includes(channelId)) return;
+
+  const exclusions = await getLoggingExclusions(guild.id).catch(() => []);
+  if (exclusions.length && sourceIds.length) {
+    const excludedChannels = new Set(exclusions.filter((e) => e.target_type === "channel").map((e) => e.target_id));
+    const excludedCategories = new Set(exclusions.filter((e) => e.target_type === "category").map((e) => e.target_id));
+
+    for (const sourceId of sourceIds) {
+      if (excludedChannels.has(sourceId)) return;
+      const sourceChannel = await guild.channels.fetch(sourceId).catch(() => null);
+      if (sourceChannel?.parentId && excludedCategories.has(sourceChannel.parentId)) return;
+    }
+  }
 
   const channel = await guild.channels.fetch(channelId).catch(() => null);
   if (!channel || !channel.isTextBased || !channel.isTextBased()) return;
@@ -520,6 +542,7 @@ client.on(Events.MessageDelete, async (message) => {
   await sendGuildLog(message.guild, {
     color: LOG_THEME.warn,
     title: "🗑️ Message Deleted",
+    sourceChannelId: message.channel?.id,
     description: `A message was deleted in ${message.channel ? `<#${message.channel.id}>` : "unknown channel"}.`,
     fields: [
       { name: "Author", value: userLabel(message.author), inline: true },
@@ -542,6 +565,7 @@ client.on(Events.MessageBulkDelete, async (messages, channel) => {
   await sendGuildLog(guild, {
     color: LOG_THEME.warn,
     title: "🧹 Bulk Purge",
+    sourceChannelId: channel?.id,
     description: `${messages.size} messages were purged in ${channel ? `<#${channel.id}>` : "unknown channel"}.`,
     fields: [
       { name: "Purged By", value: executor ? userLabel(executor) : "Unknown", inline: true },
@@ -561,6 +585,7 @@ client.on(Events.MessageUpdate, async (oldMessage, newMessage) => {
   await sendGuildLog(newMessage.guild, {
     color: LOG_THEME.info,
     title: "✏️ Message Edited",
+    sourceChannelId: newMessage.channel?.id,
     description: `A message was edited in ${newMessage.channel ? `<#${newMessage.channel.id}>` : "unknown channel"}.`,
     fields: [
       { name: "Author", value: userLabel(newMessage.author), inline: true },
@@ -578,6 +603,7 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
     await sendGuildLog(guild, {
       color: LOG_THEME.info,
       title: "🔊 Voice Join",
+      sourceChannelId: newState.channel?.id,
       description: `${newState.member} joined ${channelLabel(newState.channel)}.`
     });
     return;
@@ -587,6 +613,7 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
     await sendGuildLog(guild, {
       color: LOG_THEME.info,
       title: "🔇 Voice Leave",
+      sourceChannelId: oldState.channel?.id,
       description: `${oldState.member} left ${channelLabel(oldState.channel)}.`
     });
     return;
@@ -596,6 +623,7 @@ client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
     await sendGuildLog(guild, {
       color: LOG_THEME.info,
       title: "🔁 Voice Move",
+      sourceChannelIds: [oldState.channel?.id, newState.channel?.id],
       description: `${newState.member} moved from ${channelLabel(oldState.channel)} to ${channelLabel(newState.channel)}.`
     });
   }
@@ -696,6 +724,7 @@ client.on(Events.ChannelCreate, async (channel) => {
   await sendGuildLog(channel.guild, {
     color: LOG_THEME.info,
     title: "➕ Channel Created",
+    sourceChannelId: channel.id,
     description: `${channelLabel(channel)} was created.`
   });
 });
@@ -705,6 +734,7 @@ client.on(Events.ChannelDelete, async (channel) => {
   await sendGuildLog(channel.guild, {
     color: LOG_THEME.warn,
     title: "➖ Channel Deleted",
+    sourceChannelId: channel.id,
     description: `${channelLabel(channel)} was deleted.`
   });
 });
@@ -715,6 +745,7 @@ client.on(Events.ChannelUpdate, async (oldChannel, newChannel) => {
   await sendGuildLog(newChannel.guild, {
     color: LOG_THEME.info,
     title: "🛠️ Channel Updated",
+    sourceChannelId: newChannel.id,
     description: `${channelLabel(newChannel)} was updated.`,
     fields: [
       { name: "Name", value: `${oldChannel.name || "(unknown)"} → ${newChannel.name || "(unknown)"}` }
