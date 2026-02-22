@@ -109,6 +109,66 @@ function trimText(value, max = 1000) {
   return `${text.slice(0, max - 1)}…`;
 }
 
+function customEmojiLinksFromText(text) {
+  const raw = String(text || "");
+  const regex = /<(a?):([a-zA-Z0-9_]+):(\d+)>/g;
+  const result = [];
+  let match;
+
+  while ((match = regex.exec(raw)) !== null) {
+    const animated = match[1] === "a";
+    const name = match[2];
+    const emojiId = match[3];
+    const extension = animated ? "gif" : "png";
+    const emojiUrl = `https://cdn.discordapp.com/emojis/${emojiId}.${extension}?size=128&quality=lossless`;
+    result.push({ name, emojiId, animated, emojiUrl });
+  }
+
+  return result;
+}
+
+function stickerUrl(sticker) {
+  if (!sticker?.id) return null;
+  if (sticker.url) return sticker.url;
+  return `https://cdn.discordapp.com/stickers/${sticker.id}.png`;
+}
+
+function formatMessageLogContent(message) {
+  if (!message) return "(no message data)";
+
+  const text = String(message.content || "").trim();
+  const lines = [];
+
+  lines.push(`Text: ${text || "(no text)"}`);
+
+  const attachments = message.attachments ? [...message.attachments.values()] : [];
+  if (attachments.length) {
+    lines.push(`Attachments (${attachments.length}):`);
+    for (const attachment of attachments.slice(0, 8)) {
+      const kind = attachment.contentType?.startsWith("image/") ? "image" : "file";
+      lines.push(`- [${kind}] ${attachment.name || "attachment"} → ${attachment.url}`);
+    }
+  }
+
+  const stickers = message.stickers ? [...message.stickers.values()] : [];
+  if (stickers.length) {
+    lines.push(`Stickers (${stickers.length}):`);
+    for (const sticker of stickers.slice(0, 8)) {
+      lines.push(`- ${sticker.name || "sticker"} (${sticker.id}) → ${stickerUrl(sticker) || "n/a"}`);
+    }
+  }
+
+  const customEmojis = customEmojiLinksFromText(message.content || "");
+  if (customEmojis.length) {
+    lines.push(`Custom Emojis (${customEmojis.length}):`);
+    for (const emoji of customEmojis.slice(0, 12)) {
+      lines.push(`- ${emoji.animated ? "animated" : "static"} :${emoji.name}: (${emoji.emojiId}) → ${emoji.emojiUrl}`);
+    }
+  }
+
+  return trimText(lines.join("\n"), 3500);
+}
+
 function userLabel(userLike) {
   if (!userLike) return "Unknown";
   const user = userLike.user || userLike;
@@ -565,7 +625,7 @@ client.on(Events.MessageDelete, async (message) => {
     fields: [
       { name: "Author", value: userLabel(message.author), inline: true },
       { name: "Deleted By", value: deletedBy, inline: true },
-      { name: "Content", value: trimText(message.content || "(no text)") }
+      { name: "Content", value: formatMessageLogContent(message) }
     ]
   });
 });
@@ -584,7 +644,7 @@ client.on(Events.MessageBulkDelete, async (messages, channel) => {
   const actorLabel = await resolveActionActorLabel(guild, executor, tracked?.actorId);
   const preview = messages
     .first(5)
-    .map((msg) => `${msg.author ? msg.author.username : "Unknown"}: ${trimText(msg.content || "(no text)", 120)}`)
+    .map((msg) => `${msg.author ? msg.author.username : "Unknown"}: ${trimText(formatMessageLogContent(msg), 180)}`)
     .join("\n");
 
   await sendGuildLog(guild, {
@@ -614,8 +674,8 @@ client.on(Events.MessageUpdate, async (oldMessage, newMessage) => {
     description: `A message was edited in ${newMessage.channel ? `<#${newMessage.channel.id}>` : "unknown channel"}.`,
     fields: [
       { name: "Author", value: userLabel(newMessage.author), inline: true },
-      { name: "Before", value: trimText(oldMessage.content || "(no text)") },
-      { name: "After", value: trimText(newMessage.content || "(no text)") }
+      { name: "Before", value: formatMessageLogContent(oldMessage) },
+      { name: "After", value: formatMessageLogContent(newMessage) }
     ]
   });
 });
