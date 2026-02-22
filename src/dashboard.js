@@ -2823,6 +2823,13 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
           </select>
         </label>
         <br/><br/>
+        <label>Log Channel
+          <select name="log_channel_id">
+            <option value="" ${!settings.log_channel_id ? "selected" : ""}>None</option>
+            ${textChannels.map((c) => `<option value="${c.id}" ${settings.log_channel_id === c.id ? "selected" : ""}>#${escapeHtml(c.name)} (${c.id})</option>`).join("")}
+          </select>
+        </label>
+        <br/><br/>
         <button type="submit">Save Moderation Settings</button>
       </form>
 
@@ -3063,7 +3070,8 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
     try {
       const guildId = req.params.guildId;
       const modRoleId = String(req.body.mod_role_id || "").trim() || null;
-      await updateGuildSettings(guildId, { mod_role_id: modRoleId });
+      const logChannelId = String(req.body.log_channel_id || "").trim() || null;
+      await updateGuildSettings(guildId, { mod_role_id: modRoleId, log_channel_id: logChannelId });
       return res.redirect(`/guild/${guildId}`);
     } catch (e) {
       console.error("mod-settings save error:", e);

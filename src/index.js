@@ -6,7 +6,8 @@ const {
   Partials,
   Events,
   AuditLogEvent,
-  ChannelType
+  ChannelType,
+  EmbedBuilder
 } = require("discord.js");
 
 const { initDb, get, run } = require("./db");
@@ -91,6 +92,72 @@ function formatLevelUpMessage(template, { user, level, xp }) {
     .replaceAll("{user}", user)
     .replaceAll("{level}", String(level))
     .replaceAll("{xp}", String(xp));
+}
+
+const LOG_THEME = {
+  info: 0x71faf9,
+  warn: 0xedd7ae,
+  mod: 0xffddfc,
+  neutral: 0x0a1e1e
+};
+
+function trimText(value, max = 1000) {
+  const text = String(value ?? "");
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 1)}…`;
+}
+
+function userLabel(userLike) {
+  if (!userLike) return "Unknown";
+  const user = userLike.user || userLike;
+  const tag = user.tag || user.username || "Unknown";
+  return `${tag} (${user.id || "no-id"})`;
+}
+
+function channelLabel(channel) {
+  if (!channel) return "Unknown channel";
+  return `#${channel.name || channel.id} (${channel.id})`;
+}
+
+async function getAuditExecutor(guild, type, targetId) {
+  try {
+    const logs = await guild.fetchAuditLogs({ type, limit: 6 });
+    const entry = logs.entries.find((e) => {
+      if (!e) return false;
+      if (targetId && e.target?.id && e.target.id !== targetId) return false;
+      const age = Date.now() - Number(e.createdTimestamp || 0);
+      return age < 20_000;
+    });
+    return entry?.executor || null;
+  } catch {
+    return null;
+  }
+}
+
+async function sendGuildLog(guild, payload) {
+  if (!guild) return;
+  const settings = await getGuildSettings(guild.id).catch(() => null);
+  const channelId = settings?.log_channel_id;
+  if (!channelId) return;
+
+  const channel = await guild.channels.fetch(channelId).catch(() => null);
+  if (!channel || !channel.isTextBased || !channel.isTextBased()) return;
+
+  const embed = new EmbedBuilder()
+    .setColor(payload.color || LOG_THEME.info)
+    .setTitle(payload.title || "Server Log")
+    .setDescription(trimText(payload.description || ""))
+    .setTimestamp(new Date());
+
+  if (Array.isArray(payload.fields) && payload.fields.length) {
+    embed.addFields(payload.fields.slice(0, 10).map((f) => ({
+      name: trimText(f.name || "Field", 200),
+      value: trimText(f.value || "-", 1024),
+      inline: Boolean(f.inline)
+    })));
+  }
+
+  await channel.send({ embeds: [embed] }).catch(() => {});
 }
 
 async function handleLevelUp(guild, userId, oldLevel, newLevel, message = null) {
@@ -436,4 +503,233 @@ client.on(Events.GuildCreate, async (guild) => {
   } catch (err) {
     console.error("[slash] GuildCreate sync failed:", err);
   }
+});
+
+client.on(Events.MessageDelete, async (message) => {
+  if (!message?.guild || message.author?.bot) return;
+  if (message.partial) {
+    await message.fetch().catch(() => {});
+  }
+
+  const deleter = await getAuditExecutor(message.guild, AuditLogEvent.MessageDelete, message.author?.id);
+  await sendGuildLog(message.guild, {
+    color: LOG_THEME.warn,
+    title: "🗑️ Message Deleted",
+    description: `A message was deleted in ${message.channel ? `<#${message.channel.id}>` : "unknown channel"}.`,
+    fields: [
+      { name: "Author", value: userLabel(message.author), inline: true },
+      { name: "Deleted By", value: deleter ? userLabel(deleter) : "Unknown", inline: true },
+      { name: "Content", value: trimText(message.content || "(no text)") }
+    ]
+  });
+});
+
+client.on(Events.MessageBulkDelete, async (messages, channel) => {
+  const guild = channel?.guild;
+  if (!guild) return;
+  await sendGuildLog(guild, {
+    color: LOG_THEME.warn,
+    title: "🧹 Bulk Purge",
+    description: `${messages.size} messages were purged in ${channel ? `<#${channel.id}>` : "unknown channel"}.`
+  });
+});
+
+client.on(Events.MessageUpdate, async (oldMessage, newMessage) => {
+  if (!newMessage?.guild) return;
+  if (oldMessage.partial) await oldMessage.fetch().catch(() => {});
+  if (newMessage.partial) await newMessage.fetch().catch(() => {});
+  if ((oldMessage.content || "") === (newMessage.content || "")) return;
+  if (newMessage.author?.bot) return;
+
+  await sendGuildLog(newMessage.guild, {
+    color: LOG_THEME.info,
+    title: "✏️ Message Edited",
+    description: `A message was edited in ${newMessage.channel ? `<#${newMessage.channel.id}>` : "unknown channel"}.`,
+    fields: [
+      { name: "Author", value: userLabel(newMessage.author), inline: true },
+      { name: "Before", value: trimText(oldMessage.content || "(no text)") },
+      { name: "After", value: trimText(newMessage.content || "(no text)") }
+    ]
+  });
+});
+
+client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
+  const guild = newState.guild || oldState.guild;
+  if (!guild || newState.member?.user?.bot) return;
+
+  if (!oldState.channelId && newState.channelId) {
+    await sendGuildLog(guild, {
+      color: LOG_THEME.info,
+      title: "🔊 Voice Join",
+      description: `${newState.member} joined ${channelLabel(newState.channel)}.`
+    });
+    return;
+  }
+
+  if (oldState.channelId && !newState.channelId) {
+    await sendGuildLog(guild, {
+      color: LOG_THEME.info,
+      title: "🔇 Voice Leave",
+      description: `${oldState.member} left ${channelLabel(oldState.channel)}.`
+    });
+    return;
+  }
+
+  if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
+    await sendGuildLog(guild, {
+      color: LOG_THEME.info,
+      title: "🔁 Voice Move",
+      description: `${newState.member} moved from ${channelLabel(oldState.channel)} to ${channelLabel(newState.channel)}.`
+    });
+  }
+});
+
+client.on(Events.GuildMemberAdd, async (member) => {
+  await sendGuildLog(member.guild, {
+    color: LOG_THEME.info,
+    title: "📥 Member Joined",
+    description: `${member} joined the server.`,
+    fields: [{ name: "User", value: userLabel(member.user), inline: true }]
+  });
+});
+
+client.on(Events.GuildMemberRemove, async (member) => {
+  const executor = await getAuditExecutor(member.guild, AuditLogEvent.MemberKick, member.id)
+    || await getAuditExecutor(member.guild, AuditLogEvent.MemberBanAdd, member.id);
+
+  await sendGuildLog(member.guild, {
+    color: LOG_THEME.warn,
+    title: "📤 Member Left",
+    description: `${member.user?.tag || member.id} left or was removed.`,
+    fields: [
+      { name: "User", value: userLabel(member.user), inline: true },
+      { name: "Action By", value: executor ? userLabel(executor) : "Unknown", inline: true }
+    ]
+  });
+});
+
+client.on(Events.GuildBanAdd, async (ban) => {
+  const executor = await getAuditExecutor(ban.guild, AuditLogEvent.MemberBanAdd, ban.user.id);
+  await sendGuildLog(ban.guild, {
+    color: LOG_THEME.mod,
+    title: "⛔ Member Banned",
+    description: `${userLabel(ban.user)} was banned.`,
+    fields: [{ name: "Moderator", value: executor ? userLabel(executor) : "Unknown", inline: true }]
+  });
+});
+
+client.on(Events.GuildBanRemove, async (ban) => {
+  const executor = await getAuditExecutor(ban.guild, AuditLogEvent.MemberBanRemove, ban.user.id);
+  await sendGuildLog(ban.guild, {
+    color: LOG_THEME.mod,
+    title: "✅ Member Unbanned",
+    description: `${userLabel(ban.user)} was unbanned.`,
+    fields: [{ name: "Moderator", value: executor ? userLabel(executor) : "Unknown", inline: true }]
+  });
+});
+
+client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
+  if (oldMember.user?.bot) return;
+
+  const oldRoles = new Set(oldMember.roles.cache.keys());
+  const newRoles = new Set(newMember.roles.cache.keys());
+  const added = [...newRoles].filter((id) => !oldRoles.has(id));
+  const removed = [...oldRoles].filter((id) => !newRoles.has(id));
+
+  if (added.length || removed.length) {
+    const executor = await getAuditExecutor(newMember.guild, AuditLogEvent.MemberRoleUpdate, newMember.id);
+    await sendGuildLog(newMember.guild, {
+      color: LOG_THEME.mod,
+      title: "🧩 Roles Updated",
+      description: `${newMember} role membership changed.`,
+      fields: [
+        { name: "Added", value: added.length ? added.map((id) => `<@&${id}>`).join(", ") : "None" },
+        { name: "Removed", value: removed.length ? removed.map((id) => `<@&${id}>`).join(", ") : "None" },
+        { name: "Updated By", value: executor ? userLabel(executor) : "Unknown", inline: true }
+      ]
+    });
+  }
+
+  if ((oldMember.nickname || "") !== (newMember.nickname || "")) {
+    await sendGuildLog(newMember.guild, {
+      color: LOG_THEME.info,
+      title: "📝 Nickname Changed",
+      description: `${newMember} nickname updated.`,
+      fields: [
+        { name: "Before", value: oldMember.nickname || "(none)", inline: true },
+        { name: "After", value: newMember.nickname || "(none)", inline: true }
+      ]
+    });
+  }
+
+  const oldTimeout = oldMember.communicationDisabledUntilTimestamp || null;
+  const newTimeout = newMember.communicationDisabledUntilTimestamp || null;
+  if (oldTimeout !== newTimeout) {
+    await sendGuildLog(newMember.guild, {
+      color: LOG_THEME.mod,
+      title: newTimeout ? "🔇 Member Muted" : "🔊 Member Unmuted",
+      description: `${newMember} ${newTimeout ? "was muted (timed out)" : "was unmuted"}.`,
+      fields: newTimeout ? [{ name: "Until", value: `<t:${Math.floor(newTimeout / 1000)}:F>` }] : []
+    });
+  }
+});
+
+client.on(Events.ChannelCreate, async (channel) => {
+  if (!channel.guild) return;
+  await sendGuildLog(channel.guild, {
+    color: LOG_THEME.info,
+    title: "➕ Channel Created",
+    description: `${channelLabel(channel)} was created.`
+  });
+});
+
+client.on(Events.ChannelDelete, async (channel) => {
+  if (!channel.guild) return;
+  await sendGuildLog(channel.guild, {
+    color: LOG_THEME.warn,
+    title: "➖ Channel Deleted",
+    description: `${channelLabel(channel)} was deleted.`
+  });
+});
+
+client.on(Events.ChannelUpdate, async (oldChannel, newChannel) => {
+  if (!newChannel.guild) return;
+  if (oldChannel.name === newChannel.name) return;
+  await sendGuildLog(newChannel.guild, {
+    color: LOG_THEME.info,
+    title: "🛠️ Channel Updated",
+    description: `${channelLabel(newChannel)} was updated.`,
+    fields: [
+      { name: "Name", value: `${oldChannel.name || "(unknown)"} → ${newChannel.name || "(unknown)"}` }
+    ]
+  });
+});
+
+client.on(Events.RoleCreate, async (role) => {
+  await sendGuildLog(role.guild, {
+    color: LOG_THEME.mod,
+    title: "🏷️ Role Created",
+    description: `Role <@&${role.id}> was created.`
+  });
+});
+
+client.on(Events.RoleDelete, async (role) => {
+  await sendGuildLog(role.guild, {
+    color: LOG_THEME.warn,
+    title: "🗑️ Role Deleted",
+    description: `Role ${role.name} (${role.id}) was deleted.`
+  });
+});
+
+client.on(Events.RoleUpdate, async (oldRole, newRole) => {
+  if (oldRole.name === newRole.name && oldRole.hexColor === newRole.hexColor) return;
+  await sendGuildLog(newRole.guild, {
+    color: LOG_THEME.mod,
+    title: "🎨 Role Updated",
+    description: `Role <@&${newRole.id}> was updated.`,
+    fields: [
+      { name: "Name", value: `${oldRole.name} → ${newRole.name}`, inline: true },
+      { name: "Color", value: `${oldRole.hexColor} → ${newRole.hexColor}`, inline: true }
+    ]
+  });
 });

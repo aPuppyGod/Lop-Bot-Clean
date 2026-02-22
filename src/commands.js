@@ -1776,7 +1776,7 @@ async function handleSlashCommand(interaction) {
 
 async function registerSlashCommands(client) {
   const defs = buildSlashCommands();
-  await client.application.commands.set(defs);
+  await client.application.commands.set([]);
 
   let guildSynced = 0;
   for (const [, guild] of client.guilds.cache) {
@@ -1788,7 +1788,7 @@ async function registerSlashCommands(client) {
     }
   }
 
-  console.log(`[slash] Registered ${defs.length} commands (global + ${guildSynced} guilds)`);
+  console.log(`[slash] Registered ${defs.length} commands (guild-only sync across ${guildSynced} guilds)`);
 }
 
 module.exports = { handleCommands, handleSlashCommand, registerSlashCommands };

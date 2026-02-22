@@ -207,6 +207,7 @@ async function initDb() {
       reaction_cooldown_seconds INTEGER DEFAULT 30,
       voice_xp_per_minute INTEGER DEFAULT 5,
       mod_role_id TEXT DEFAULT NULL,
+      log_channel_id TEXT DEFAULT NULL,
 
       level_up_channel_id TEXT DEFAULT NULL,
       level_up_message TEXT DEFAULT NULL,
@@ -312,6 +313,7 @@ async function initDb() {
     await run(`ALTER TABLE user_rankcard_customizations ADD COLUMN IF NOT EXISTS bgmode TEXT`);
     await run(`ALTER TABLE user_rankcard_customizations ADD COLUMN IF NOT EXISTS bgimage_data BYTEA`);
     await run(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS mod_role_id TEXT DEFAULT NULL`);
+    await run(`ALTER TABLE guild_settings ADD COLUMN IF NOT EXISTS log_channel_id TEXT DEFAULT NULL`);
   } catch (e) {
     // Columns might already exist, ignore error
   }

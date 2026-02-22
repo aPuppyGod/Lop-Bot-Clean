@@ -28,6 +28,7 @@ async function getGuildSettings(guildId) {
 
     voice_xp_per_minute: row?.voice_xp_per_minute ?? 5,
     mod_role_id: row?.mod_role_id ?? null,
+    log_channel_id: row?.log_channel_id ?? null,
 
     level_up_channel_id: row?.level_up_channel_id ?? null,
 
@@ -45,6 +46,7 @@ async function updateGuildSettings(guildId, patch) {
     "reaction_cooldown_seconds",
     "voice_xp_per_minute",
     "mod_role_id",
+    "log_channel_id",
     "level_up_channel_id",
     "level_up_message"
   ]);
