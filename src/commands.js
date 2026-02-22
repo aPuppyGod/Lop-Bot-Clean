@@ -1689,7 +1689,10 @@ function buildSlashCommands() {
 }
 
 function optionValue(interaction, key) {
-  return interaction.options.getString(key) || interaction.options.getInteger(key) || interaction.options.getBoolean(key) || interaction.options.getUser(key)?.id || interaction.options.getRole(key)?.id || "";
+  const option = interaction.options?.data?.find((entry) => entry.name === key);
+  if (!option) return "";
+  if (option.value === null || option.value === undefined) return "";
+  return option.value;
 }
 
 function buildSyntheticMessage(interaction, cmdName, args) {

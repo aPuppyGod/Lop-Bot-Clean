@@ -512,13 +512,18 @@ client.on(Events.MessageDelete, async (message) => {
   }
 
   const deleter = await getAuditExecutor(message.guild, AuditLogEvent.MessageDelete, message.author?.id);
+  const deletedBy = deleter
+    ? userLabel(deleter)
+    : message.author
+      ? `${userLabel(message.author)} (self-delete)`
+      : "Unknown";
   await sendGuildLog(message.guild, {
     color: LOG_THEME.warn,
     title: "🗑️ Message Deleted",
     description: `A message was deleted in ${message.channel ? `<#${message.channel.id}>` : "unknown channel"}.`,
     fields: [
       { name: "Author", value: userLabel(message.author), inline: true },
-      { name: "Deleted By", value: deleter ? userLabel(deleter) : "Unknown", inline: true },
+      { name: "Deleted By", value: deletedBy, inline: true },
       { name: "Content", value: trimText(message.content || "(no text)") }
     ]
   });
@@ -527,10 +532,22 @@ client.on(Events.MessageDelete, async (message) => {
 client.on(Events.MessageBulkDelete, async (messages, channel) => {
   const guild = channel?.guild;
   if (!guild) return;
+
+  const executor = await getAuditExecutor(guild, AuditLogEvent.MessageBulkDelete, null);
+  const preview = messages
+    .first(5)
+    .map((msg) => `${msg.author ? msg.author.username : "Unknown"}: ${trimText(msg.content || "(no text)", 120)}`)
+    .join("\n");
+
   await sendGuildLog(guild, {
     color: LOG_THEME.warn,
     title: "🧹 Bulk Purge",
-    description: `${messages.size} messages were purged in ${channel ? `<#${channel.id}>` : "unknown channel"}.`
+    description: `${messages.size} messages were purged in ${channel ? `<#${channel.id}>` : "unknown channel"}.`,
+    fields: [
+      { name: "Purged By", value: executor ? userLabel(executor) : "Unknown", inline: true },
+      { name: "Message Count", value: String(messages.size), inline: true },
+      { name: "Sample", value: preview || "No message preview available." }
+    ]
   });
 });
 
