@@ -6,7 +6,6 @@ const { createCanvas, loadImage, registerFont } = require("canvas");
 // Register bundled font
 registerFont(require('path').join(__dirname, '..', 'assets', 'Open_Sans', 'static', 'OpenSans-Regular.ttf'), { family: 'OpenSans' });
 const { getLevelRoles, getGuildSettings } = require("./settings");
-const { joinMemberVoiceChannel, speakTextInVoice } = require("./voiceTts");
 const { recordModAction } = require("./modActionTracker");
 const fs = require("fs");
 const path = require("path");
@@ -262,7 +261,6 @@ async function cmdPublicCommands(message) {
     "`!steal-cookies-from-everyone` `/steal-cookies-from-everyone`",
     "`!lop-bot` `/lop-bot`",
     "`!voice-limit/lock/unlock/rename/ban` and matching `/voice-*`",
-    "`.v join` and `.v <text>` (prefix only)",
     "`!riley` (prefix only)"
   ]);
   await message.reply({ embeds: [embed] }).catch(() => {});
@@ -457,7 +455,7 @@ async function cmdRank(message, args) {
       ctx.arc(90, 90, 60, 0, Math.PI * 2);
       ctx.closePath();
       ctx.clip();
-      ctx.drawImage(avatar, 30, 20, 120, 120);
+      ctx.drawImage(avatar, 30, 30, 120, 120);
       ctx.restore();
       
       // Draw avatar border and frame effects
@@ -1402,106 +1400,12 @@ async function cmdClaimAll(message) {
   await message.reply(`✅ Applied XP to **${applied}** members.`).catch(() => {});
 }
 
-async function sendTtsFallbackSilently(message, text) {
-  const channel = message.channel;
-  const speakerName =
-    (message.member?.displayName || message.author?.username || "User")
-      .replace(/[\r\n\t]/g, " ")
-      .trim()
-      .slice(0, 80) || "User";
-  const speakerAvatar =
-    message.member?.displayAvatarURL?.({ size: 256 }) ||
-    message.author?.displayAvatarURL?.({ size: 256 }) ||
-    undefined;
-
-  if (!channel) return false;
-
-  if (typeof channel.fetchWebhooks !== "function" || typeof channel.createWebhook !== "function") {
-    return false;
-  }
-
-  const canManageWebhooks = channel.permissionsFor(message.guild.members.me)?.has(PermissionsBitField.Flags.ManageWebhooks);
-  if (!canManageWebhooks) return false;
-
-  try {
-    const hooks = await channel.fetchWebhooks();
-    let hook = hooks.find((h) => h.owner?.id === message.client.user.id && h.name === "lop-tts-fallback");
-
-    if (!hook) {
-      hook = await channel.createWebhook({
-        name: "lop-tts-fallback"
-      });
-    }
-
-    await hook.send({
-      content: text,
-      tts: true,
-      username: speakerName,
-      avatarURL: speakerAvatar,
-      wait: true
-    });
-
-    return true;
-  } catch (err) {
-    console.error("[tts-fallback] Webhook fallback failed:", err);
-    return false;
-  }
-}
-
 // ─────────────────────────────────────────────────────
 // Main handler
 // ─────────────────────────────────────────────────────
 
 async function handleCommands(message) {
   if (!message || !message.content) return false;
-
-  const raw = message.content.trim();
-  if (raw.toLowerCase().startsWith(".v")) {
-    const deleteCommandMessage = async () => {
-      await message.delete().catch(() => {});
-    };
-
-    const payload = raw.slice(2).trim();
-
-    if (!payload) {
-      await message.reply("Usage: `.v join` or `.v your text here`").catch(() => {});
-      await deleteCommandMessage();
-      return true;
-    }
-
-    if (payload.toLowerCase() === "join") {
-      const joined = await joinMemberVoiceChannel(message);
-      if (!joined.ok) {
-        await message.reply(`❌ ${joined.reason}`).catch(() => {});
-        await deleteCommandMessage();
-        return true;
-      }
-      await message.reply(`✅ Joined **${joined.channel.name}**`).catch(() => {});
-      await deleteCommandMessage();
-      return true;
-    }
-
-    const spoken = await speakTextInVoice(message, payload);
-    if (!spoken.ok) {
-      if (spoken.reason === "VOICE_UDP_UNAVAILABLE") {
-        const sent = await sendTtsFallbackSilently(message, payload);
-        if (!sent) {
-          await message.reply("❌ I need `Manage Webhooks` in this channel for fallback TTS.").catch(() => {});
-          await deleteCommandMessage();
-          return true;
-        }
-        await deleteCommandMessage();
-        return true;
-      }
-
-      await message.reply(`❌ ${spoken.reason}`).catch(() => {});
-      await deleteCommandMessage();
-      return true;
-    }
-
-    await deleteCommandMessage();
-    return true;
-  }
 
   if (!message.guild) return false;
   const activePrefixes = await getActivePrefixes(message);

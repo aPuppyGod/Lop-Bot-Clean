@@ -301,6 +301,212 @@ function htmlTemplate(content, opts = {}) {
     form {
       margin-bottom: 20px;
     }
+
+    .admin-section {
+      padding: 14px 0;
+    }
+
+    .module-toolbar {
+      margin: 10px 0 16px;
+    }
+
+    .module-search {
+      width: 100%;
+      max-width: 100%;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 2px solid rgba(113, 250, 249, 0.35);
+      background: rgba(10, 30, 30, 0.5);
+      color: #f0f0f0;
+      margin-bottom: 0;
+    }
+
+    .module-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .module-card {
+      border: 1px solid rgba(113, 250, 249, 0.25);
+      border-radius: 14px;
+      padding: 14px;
+      background: linear-gradient(160deg, rgba(7, 24, 26, 0.95), rgba(10, 35, 37, 0.92));
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+
+    .module-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255, 221, 252, 0.55);
+      box-shadow: 0 14px 24px rgba(0, 0, 0, 0.35), 0 0 14px rgba(255, 221, 252, 0.18);
+    }
+
+    .module-card.active {
+      border-color: rgba(255, 221, 252, 0.9);
+      box-shadow: 0 0 0 1px rgba(255, 221, 252, 0.45), 0 16px 26px rgba(0, 0, 0, 0.35);
+    }
+
+    .module-card h4 {
+      margin: 0;
+      font-size: 1.18em;
+      color: #f7f7f7;
+    }
+
+    .module-card p {
+      margin: 0;
+      opacity: 0.86;
+      line-height: 1.35;
+      font-size: 0.95em;
+    }
+
+    .module-card-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: auto;
+    }
+
+    .module-badge {
+      font-size: 0.78em;
+      font-weight: 700;
+      border-radius: 999px;
+      padding: 5px 10px;
+      letter-spacing: 0.2px;
+    }
+
+    .module-badge.on {
+      color: #032321;
+      background: linear-gradient(135deg, #71faf9, #99ffe7);
+    }
+
+    .module-badge.off {
+      color: #ffe8e8;
+      background: rgba(255, 120, 120, 0.28);
+      border: 1px solid rgba(255, 180, 180, 0.35);
+    }
+
+    .module-settings-link {
+      text-decoration: none;
+      font-weight: 700;
+      color: #0a1e1e;
+      background: linear-gradient(135deg, #ffddfc, #edd7ae);
+      border-radius: 8px;
+      padding: 7px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+    }
+
+    .module-settings-link:hover {
+      text-decoration: none;
+      color: #0a1e1e;
+      filter: brightness(1.05);
+    }
+
+    .module-pane {
+      padding: 4px 0;
+    }
+
+    .admin-grid-form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: flex-end;
+    }
+
+    .admin-grid-form label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 180px;
+      flex: 1;
+    }
+
+    .admin-grid-form input,
+    .admin-grid-form select {
+      width: 100%;
+      margin-bottom: 0;
+    }
+
+    .admin-grid-form button {
+      width: auto;
+      margin: 0;
+      align-self: flex-end;
+    }
+
+    .event-toggle-cell {
+      text-align: center;
+      width: 120px;
+    }
+
+    input.event-toggle {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 56px;
+      height: 30px;
+      border-radius: 999px;
+      border: 2px solid #71faf9;
+      background: rgba(113, 250, 249, 0.15);
+      cursor: pointer;
+      position: relative;
+      transition: all 0.25s ease;
+      padding: 0;
+      margin: 0;
+      box-sizing: border-box;
+    }
+
+    input.event-toggle::after {
+      content: "";
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #71faf9;
+      box-shadow: 0 2px 8px rgba(113, 250, 249, 0.5);
+      transition: transform 0.25s ease, background 0.25s ease;
+    }
+
+    input.event-toggle:checked {
+      border-color: #ffddfc;
+      background: linear-gradient(135deg, rgba(255, 221, 252, 0.9), rgba(113, 250, 249, 0.85));
+      box-shadow: 0 0 10px rgba(255, 221, 252, 0.45);
+    }
+
+    input.event-toggle:checked::after {
+      transform: translateX(26px);
+      background: #0a1e1e;
+    }
+
+    input.event-toggle:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(113, 250, 249, 0.35), 0 0 12px rgba(255, 221, 252, 0.35);
+    }
+
+    body[data-theme="dark"] input.event-toggle {
+      border-color: #ffddfc;
+      background: rgba(255, 221, 252, 0.12);
+    }
+
+    body[data-theme="dark"] input.event-toggle::after {
+      background: #ffddfc;
+      box-shadow: 0 2px 8px rgba(255, 221, 252, 0.45);
+    }
+
+    body[data-theme="dark"] input.event-toggle:checked {
+      border-color: #71faf9;
+      background: linear-gradient(135deg, rgba(113, 250, 249, 0.9), rgba(255, 221, 252, 0.85));
+      box-shadow: 0 0 10px rgba(113, 250, 249, 0.45);
+    }
+
+    body[data-theme="dark"] input.event-toggle:checked::after {
+      background: #0a1e1e;
+    }
     
     /* Mobile Responsive Styles */
     @media (max-width: 768px) {
@@ -411,6 +617,41 @@ function htmlTemplate(content, opts = {}) {
         font-size: 16px; /* Prevents zoom on iOS */
         width: 100%;
         box-sizing: border-box;
+      }
+
+      .admin-grid-form {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .admin-grid-form label {
+        min-width: 100%;
+      }
+
+      .admin-grid-form button {
+        width: 100%;
+      }
+
+      .module-card {
+        padding: 12px;
+      }
+
+      .module-card-bottom {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .module-settings-link {
+        text-align: center;
+      }
+
+      input.event-toggle {
+        width: 50px !important;
+        height: 28px;
+      }
+
+      input.event-toggle:checked::after {
+        transform: translateX(22px);
       }
       
       /* Leaderboard mobile fixes */
@@ -561,9 +802,23 @@ const {
   removeIgnoredChannel,
   getLoggingExclusions,
   addLoggingExclusion,
-  removeLoggingExclusion
+  removeLoggingExclusion,
+  getLoggingEventConfigs,
+  upsertLoggingEventConfig,
+  getLoggingActorExclusions,
+  addLoggingActorExclusion,
+  removeLoggingActorExclusion,
+  getReactionRoleBindings,
+  upsertReactionRoleBinding,
+  removeReactionRoleBinding,
+  getTicketSettings,
+  upsertTicketSettings,
+  getOpenTickets
 } = require("./settings");
+const { LOG_EVENT_DEFS } = require("./loggingConfig");
 const { ChannelType } = require("discord.js");
+const { normalizeEmojiKey } = require("./reactionRoles");
+const { sendTicketPanel, closeTicketChannel } = require("./tickets");
 
 function startDashboard(client) {
     const app = express();
@@ -637,6 +892,31 @@ function startDashboard(client) {
       if (!allowed) return res.status(403).send("You are not allowed to manage this server.");
       return next();
     }
+
+    function getPrimaryGuild() {
+      return client.guilds.cache.first() || null;
+    }
+
+  // Sessions (must be before passport.session() and before routes that read req.user)
+  app.set("trust proxy", 1);
+  app.use(
+    session({
+      name: "lop_dashboard_session",
+      secret: process.env.DASHBOARD_SESSION_SECRET || "change-me",
+      resave: true,
+      saveUninitialized: true,
+      rolling: true,
+      cookie: {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: false,
+        maxAge: 30 * 24 * 60 * 60 * 1000
+      }
+    })
+  );
+
+  app.use(passport.initialize());
+  app.use(passport.session());
 
     // Leaderboard page
     app.get("/leaderboard", async (req, res) => {
@@ -762,28 +1042,6 @@ function startDashboard(client) {
         res.status(500).send(htmlTemplate(`<h2>Leaderboard</h2><p style="color:red;">Error loading leaderboard: ${escapeHtml(err.message)}</p>`, { ...getTemplateOpts(req), active: "leaderboard" }));
       }
     });
-
-  // Sessions (must be before passport.session())
-  app.set("trust proxy", 1);
-  app.use(
-    session({
-      name: "lop_dashboard_session",
-      secret: process.env.DASHBOARD_SESSION_SECRET || "change-me",
-      resave: true,
-      saveUninitialized: true,
-      rolling: true,
-      cookie: {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: false, // set true only when behind HTTPS and configured correctly
-        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days instead of 7 days
-      }
-    })
-  );
-
-  // Passport session setup (must be after session)
-  app.use(passport.initialize());
-  app.use(passport.session());
 
   // Discord OAuth2 login
   if (HAS_DISCORD_OAUTH) {
@@ -1063,7 +1321,7 @@ function startDashboard(client) {
           if (res.ok) {
             let avatarBuffer = typeof res.buffer === 'function' ? await res.buffer() : Buffer.from(await res.arrayBuffer());
             const avatar = await loadImage(avatarBuffer);
-            ctx.drawImage(avatar, 30, 20, 120, 120);
+            ctx.drawImage(avatar, 30, 30, 120, 120);
           } else {
             throw new Error('Avatar fetch failed');
           }
@@ -1313,7 +1571,7 @@ function startDashboard(client) {
             if (res2.ok) {
               let avatarBuffer = typeof res2.buffer === 'function' ? await res2.buffer() : Buffer.from(await res2.arrayBuffer());
               const avatar = await loadImage(avatarBuffer);
-              ctx.drawImage(avatar, 30, 20, 120, 120);
+              ctx.drawImage(avatar, 30, 30, 120, 120);
             } else {
               throw new Error('Avatar fetch failed');
             }
@@ -1439,7 +1697,7 @@ function startDashboard(client) {
   const port = parseInt(process.env.PORT || process.env.DASHBOARD_PORT || "3000", 10);
 
   const password = process.env.DASHBOARD_PASSWORD;
-  if (!password) {
+  if (!HAS_DISCORD_OAUTH && !password) {
     console.warn("DASHBOARD_PASSWORD not set; dashboard will not start.");
     return;
   }
@@ -1455,37 +1713,38 @@ function startDashboard(client) {
   // ─────────────────────────────────────────────
   // Auth
   // ─────────────────────────────────────────────
-  app.get("/login", (req, res) => {
-    res.send(htmlTemplate(`
-      <h2>Bot Dashboard Login</h2>
-      <form method="post" action="/login">
-        <input type="password" name="password" placeholder="Password" />
-        <button type="submit">Login</button>
-      </form>
-      <p style="color:#666;max-width:720px">
-        Tip: always use the same host (localhost OR 127.0.0.1) locally, or cookies can break.
-      </p>
-    `));
-  });
+  if (!HAS_DISCORD_OAUTH) {
+    app.get("/login", (req, res) => {
+      res.send(htmlTemplate(`
+        <h2>Bot Dashboard Login</h2>
+        <form method="post" action="/login">
+          <input type="password" name="password" placeholder="Password" />
+          <button type="submit">Login</button>
+        </form>
+        <p style="color:#666;max-width:720px">
+          Tip: always use the same host (localhost OR 127.0.0.1) locally, or cookies can break.
+        </p>
+      `));
+    });
 
-  app.post("/login", (req, res) => {
-    if (req.body.password === password) {
-      req.session.ok = true;
-      return req.session.save(() => res.redirect("/"));
-    }
-    return res.status(403).send("Wrong password.");
-  });
+    app.post("/login", (req, res) => {
+      if (req.body.password === password) {
+        req.session.ok = true;
+        return req.session.save(() => res.redirect("/"));
+      }
+      return res.status(403).send("Wrong password.");
+    });
 
-  app.get("/logout", (req, res) => {
-    req.session.destroy(() => res.redirect("/login"));
-  });
+    app.get("/logout", (req, res) => {
+      req.session.destroy(() => res.redirect("/login"));
+    });
+  }
 
   // ─────────────────────────────────────────────
   // Home: list guilds
   // ─────────────────────────────────────────────
   app.get("/admin", (req, res) => {
-    if (!req.session || !req.session.ok) return res.redirect("/login");
-    return res.redirect("/");
+    return res.redirect("/dashboard");
   });
 
   // Public home page (optional: show info or redirect to /lop)
@@ -2703,18 +2962,22 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
 
   // Admin dashboard (Discord admin/manager only)
   app.get("/dashboard", requireDiscordLogin, requireAdminOrManager, async (req, res) => {
-    const guilds = client.guilds.cache
-      .map((g) => ({ id: g.id, name: g.name }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-    res.send(htmlTemplate(`
-      <h2>Bot Dashboard</h2>
-      <p>Logged in as: ${escapeHtml(req.user.username)}#${escapeHtml(req.user.discriminator)}</p>
-      <p><a href="/logout">Logout</a></p>
-      <h3>Servers</h3>
-      <ul>
-        ${guilds.map((g) => `<li><a href="/guild/${g.id}">${escapeHtml(g.name)}</a></li>`).join("")}
-      </ul>
-    `));
+    const guild = getPrimaryGuild();
+    if (!guild) {
+      const opts = getTemplateOpts(req);
+      return res.send(htmlTemplate(`<h2>Bot Dashboard</h2><p>The bot is not in any servers.</p>`, { ...opts, active: "admin" }));
+    }
+    return res.redirect(`/guild/${guild.id}?module=overview`);
+  });
+
+  app.get("/dashboard/:module", requireDiscordLogin, requireAdminOrManager, async (req, res) => {
+    const guild = getPrimaryGuild();
+    if (!guild) {
+      const opts = getTemplateOpts(req);
+      return res.send(htmlTemplate(`<h2>Bot Dashboard</h2><p>The bot is not in any servers.</p>`, { ...opts, active: "admin" }));
+    }
+    const moduleName = String(req.params.module || "overview").toLowerCase();
+    return res.redirect(`/guild/${guild.id}?module=${encodeURIComponent(moduleName)}`);
   });
 
   // ─────────────────────────────────────────────
@@ -2778,11 +3041,34 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
     const claimLock = await get(`SELECT claim_all_done FROM guild_settings WHERE guild_id=?`, [guildId]);
     const claimLocked = claimLock?.claim_all_done === 1;
     const loggingExclusions = await getLoggingExclusions(guildId);
+    const eventConfigs = await getLoggingEventConfigs(guildId);
+    const actorExclusions = await getLoggingActorExclusions(guildId);
+    const reactionRoleBindings = await getReactionRoleBindings(guildId);
+    const ticketSettings = await getTicketSettings(guildId);
+    const openTickets = await getOpenTickets(guildId);
+    const eventConfigMap = new Map(eventConfigs.map((cfg) => [cfg.event_key, cfg]));
+    const anyLogEnabled = eventConfigs.length
+      ? eventConfigs.some((cfg) => Number(cfg.enabled) === 1)
+      : true;
+    const activeModuleRaw = String(req.query.module || "overview").toLowerCase();
+    const moduleTabs = [
+      { key: "overview", label: "Overview", description: "Server health and quick stats.", enabled: true },
+      { key: "moderation", label: "Moderation", description: "Permissions, warnings, and locks.", enabled: true },
+      { key: "logging", label: "Action Log", description: "Event logs, routes, and exclusions.", enabled: anyLogEnabled },
+      { key: "xp", label: "Levels & XP", description: "XP rates, manager, and level rules.", enabled: true },
+      { key: "tickets", label: "Tickets", description: "Ticket panel and support channels.", enabled: Boolean(ticketSettings.enabled) },
+      { key: "reactionroles", label: "Reaction Roles", description: "Bind emoji reactions to roles.", enabled: reactionRoleBindings.length > 0 },
+      { key: "voice", label: "Voice", description: "Private voice room management.", enabled: true },
+      { key: "customization", label: "Customization", description: "Rank card unlock configuration.", enabled: true }
+    ];
+    const moduleKeys = new Set(moduleTabs.map((m) => m.key));
+    const activeModule = moduleKeys.has(activeModuleRaw) ? activeModuleRaw : "overview";
 
-    const topUsers = await all(
-      `SELECT user_id, xp, level FROM user_xp WHERE guild_id=? ORDER BY xp DESC LIMIT 20`,
+    const xpCountRow = await get(
+      `SELECT COUNT(*)::int AS count FROM user_xp WHERE guild_id=?`,
       [guildId]
     );
+    const trackedXpUsers = Number(xpCountRow?.count || 0);
 
     const privateRooms = await all(
       `SELECT owner_id, voice_channel_id, text_channel_id, created_at, last_active_at
@@ -2809,24 +3095,48 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
       <h2>${escapeHtml(guild.name)}</h2>
       <p><a href="/">Back</a> | <a href="/logout">Logout</a></p>
 
+      <div class="admin-section">
+        <h3>Modules</h3>
+        <div class="module-toolbar">
+          <input id="moduleSearch" class="module-search" placeholder="Search modules..." />
+        </div>
+        <div class="module-grid" id="moduleGrid">
+          ${moduleTabs.map((tab) => `
+            <div class="module-card ${activeModule === tab.key ? "active" : ""}" data-module-label="${escapeHtml((tab.label + " " + tab.description).toLowerCase())}">
+              <h4>${escapeHtml(tab.label)}</h4>
+              <p>${escapeHtml(tab.description)}</p>
+              <div class="module-card-bottom">
+                <span class="module-badge ${tab.enabled ? "on" : "off"}">${tab.enabled ? "Enabled" : "Disabled"}</span>
+                <a class="module-settings-link" href="/dashboard/${tab.key}">Settings</a>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      </div>
+
+      <section class="module-pane" style="${activeModule === "overview" ? "" : "display:none;"}">
+      <div class="admin-section">
       <h3>Quick Overview</h3>
       <ul>
-        <li>Members tracked by XP: <b>${topUsers.length}</b> (top 20 shown below)</li>
-        <li>Configured mod role: <b>${settings.mod_role_id ? escapeHtml(settings.mod_role_id) : "Not set"}</b></li>
+        <li>Members tracked by XP: <b>${trackedXpUsers}</b></li>
+        <li>Configured mod role: <b>${settings.mod_role_id ? `@${escapeHtml(guild.roles.cache.get(settings.mod_role_id)?.name || "Unknown role")}` : "Not set"}</b></li>
         <li>Warnings stored: <b>${warningRows.length}</b></li>
         <li>Private VC rooms tracked: <b>${privateRooms.length}</b></li>
         <li>Claim-all lock: <b>${claimLocked ? "Locked" : "Unlocked"}</b></li>
       </ul>
+      </div>
+      </section>
 
       <hr/>
 
+      <section class="module-pane" style="${activeModule === "moderation" ? "" : "display:none;"}">
       <h3>Moderation Settings</h3>
       <form method="post" action="/guild/${guildId}/mod-settings">
         <label>Mod Role
           <select name="mod_role_id">
             <option value="" ${!settings.mod_role_id ? "selected" : ""}>None</option>
             ${roleOptions.map((r) => `
-              <option value="${r.id}" ${settings.mod_role_id === r.id ? "selected" : ""}>@${escapeHtml(r.name)} (${r.id})</option>
+              <option value="${r.id}" ${settings.mod_role_id === r.id ? "selected" : ""}>@${escapeHtml(r.name)}</option>
             `).join("")}
           </select>
         </label>
@@ -2835,192 +3145,19 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
           <input name="command_prefix" value="${escapeHtml(settings.command_prefix || "!")}" style="max-width:80px;" />
         </label>
         <br/><br/>
+        <label>New Account Warning Threshold (days)
+          <input name="new_account_warn_days" value="${escapeHtml(settings.new_account_warn_days || 1)}" style="max-width:120px;" />
+        </label>
+        <br/><br/>
         <label>Log Channel
           <select name="log_channel_id">
             <option value="" ${!settings.log_channel_id ? "selected" : ""}>None</option>
-            ${textChannels.map((c) => `<option value="${c.id}" ${settings.log_channel_id === c.id ? "selected" : ""}>#${escapeHtml(c.name)} (${c.id})</option>`).join("")}
+            ${textChannels.map((c) => `<option value="${c.id}" ${settings.log_channel_id === c.id ? "selected" : ""}>#${escapeHtml(c.name)}</option>`).join("")}
           </select>
         </label>
         <br/><br/>
         <button type="submit">Save Moderation Settings</button>
       </form>
-
-      <h3>Logging Exclusions</h3>
-      <form method="post" action="/guild/${guildId}/logging-exclusions/add">
-        <label>Channel
-          <select name="channel_id">
-            <option value="">None</option>
-            ${textChannels.map((c) => `<option value="${c.id}">#${escapeHtml(c.name)} (${c.id})</option>`).join("")}
-            ${voiceChannels.map((c) => `<option value="${c.id}">${escapeHtml(c.name)} (${c.id})</option>`).join("")}
-          </select>
-        </label>
-        <label>Category
-          <select name="category_id">
-            <option value="">None</option>
-            ${categories.map((c) => `<option value="${c.id}">${escapeHtml(c.name)} (${c.id})</option>`).join("")}
-          </select>
-        </label>
-        <button type="submit">Add Exclusion</button>
-      </form>
-      <p style="margin-top:6px;opacity:0.8;">The log channel is always auto-excluded.</p>
-
-      <ul>
-        ${loggingExclusions.map((entry) => {
-          const label = entry.target_type === "category"
-            ? (categories.find((c) => c.id === entry.target_id)?.name || entry.target_id)
-            : (guild.channels.cache.get(entry.target_id)?.name || entry.target_id);
-          return `
-            <li>
-              ${escapeHtml(entry.target_type)} → ${escapeHtml(label)} (${escapeHtml(entry.target_id)})
-              <form style="display:inline" method="post" action="/guild/${guildId}/logging-exclusions/delete">
-                <input type="hidden" name="target_id" value="${escapeHtml(entry.target_id)}" />
-                <button type="submit">Delete</button>
-              </form>
-            </li>
-          `;
-        }).join("")}
-      </ul>
-
-      <hr/>
-
-      <h3>XP Settings</h3>
-      <form method="post" action="/guild/${guildId}/settings">
-        <label>Message XP Min <input name="message_xp_min" value="${escapeHtml(settings.message_xp_min)}" /></label><br/>
-        <label>Message XP Max <input name="message_xp_max" value="${escapeHtml(settings.message_xp_max)}" /></label><br/>
-        <label>Message Cooldown Seconds <input name="message_cooldown_seconds" value="${escapeHtml(settings.message_cooldown_seconds)}" /></label><br/>
-        <label>Reaction XP <input name="reaction_xp" value="${escapeHtml(settings.reaction_xp)}" /></label><br/>
-        <label>Reaction Cooldown Seconds <input name="reaction_cooldown_seconds" value="${escapeHtml(settings.reaction_cooldown_seconds)}" /></label><br/>
-        <label>Voice XP Per Minute <input name="voice_xp_per_minute" value="${escapeHtml(settings.voice_xp_per_minute)}" /></label><br/><br/>
-        <button type="submit">Save XP Settings</button>
-      </form>
-
-      <h3>XP User Manager</h3>
-      <form method="post" action="/guild/${guildId}/xp/manage">
-        <label>User ID <input name="user_id" /></label>
-        <label>Action
-          <select name="action">
-            <option value="add">Add</option>
-            <option value="set">Set</option>
-          </select>
-        </label>
-        <label>Amount <input name="amount" /></label>
-        <button type="submit">Apply XP</button>
-      </form>
-
-      <table style="max-width:680px;">
-        <tr><th>User</th><th>Level</th><th>XP</th></tr>
-        ${topUsers.map((u) => {
-          const m = guild.members.cache.get(u.user_id);
-          const label = m ? `${m.displayName} (${m.user.username})` : u.user_id;
-          return `<tr><td>${escapeHtml(label)}</td><td>${u.level}</td><td>${u.xp}</td></tr>`;
-        }).join("")}
-      </table>
-
-      <hr/>
-
-      <h3>Rank Card Customization Unlocks</h3>
-      <form method="post" action="/guild/${guildId}/customization-unlocks">
-        <table style="border-collapse:collapse;">
-          <tr><th style="text-align:left;">Feature</th><th style="text-align:left;">Required Level</th></tr>
-          ${customizationOptions.map(opt => `
-            <tr>
-              <td>${escapeHtml(opt.label)}</td>
-              <td><input type="number" min="1" max="1000" name="${opt.key}" value="${unlocks[opt.key] ?? 1}" style="width:60px" /></td>
-            </tr>
-          `).join("")}
-        </table>
-        <button type="submit">Save Customization Unlocks</button>
-      </form>
-
-      <hr/>
-
-      <h3>Level-up Messages</h3>
-      <form method="post" action="/guild/${guildId}/levelup-settings">
-        <label>Level-up Channel
-          <select name="level_up_channel_id">
-            <option value="" ${!settings.level_up_channel_id ? "selected" : ""}>Same channel as message</option>
-            ${textChannels.map(ch => `
-              <option value="${ch.id}" ${settings.level_up_channel_id === ch.id ? "selected" : ""}>
-                #${escapeHtml(ch.name)}
-              </option>
-            `).join("")}
-          </select>
-        </label>
-        <br/><br/>
-
-        <label>
-          Level-up Message (supports {user}, {level}, {xp})<br/>
-          <input name="level_up_message"
-                 value="${escapeHtml(settings.level_up_message || "")}"
-                 style="max-width:520px;width:100%;box-sizing:border-box;" />
-        </label>
-        <br/><br/>
-
-        <button type="submit">Save Level-up Settings</button>
-      </form>
-
-      <form method="post" action="/guild/${guildId}/test-levelup" style="margin-top:10px;">
-        <button type="submit">Test Level-up Message</button>
-      </form>
-
-      <hr/>
-
-      <h3>Level Roles</h3>
-      <form method="post" action="/guild/${guildId}/level-roles">
-        <label>Level <input name="level" /></label>
-        <label>Role ID <input name="role_id" /></label>
-        <button type="submit">Add/Update</button>
-      </form>
-
-      <ul>
-        ${levelRoles.map((r) => `
-          <li>
-            Level ${r.level} → Role ID ${escapeHtml(r.role_id)}
-            <form style="display:inline" method="post" action="/guild/${guildId}/level-roles/delete">
-              <input type="hidden" name="level" value="${r.level}" />
-              <button type="submit">Delete</button>
-            </form>
-          </li>
-        `).join("")}
-      </ul>
-
-      <hr/>
-
-      <h3>Ignored Channels (No XP)</h3>
-      <form method="post" action="/guild/${guildId}/ignored-channels">
-        <label>Text Channel
-          <select name="text_channel_id">
-            <option value="">None</option>
-            ${textChannels.map((c) => `<option value="${c.id}">#${escapeHtml(c.name)} (${c.id})</option>`).join("")}
-          </select>
-        </label>
-        <label>Voice Channel
-          <select name="voice_channel_id">
-            <option value="">None</option>
-            ${voiceChannels.map((c) => `<option value="${c.id}">${escapeHtml(c.name)} (${c.id})</option>`).join("")}
-          </select>
-        </label>
-        <label>Or Channel ID <input name="channel_id" /></label>
-        <label>Type 
-          <select name="channel_type">
-            <option value="text">Text</option>
-            <option value="voice">Voice</option>
-          </select>
-        </label>
-        <button type="submit">Add</button>
-      </form>
-
-      <ul>
-        ${ignoredChannels.map((c) => `
-          <li>
-            ${escapeHtml(c.channel_type)} Channel ID ${escapeHtml(c.channel_id)}
-            <form style="display:inline" method="post" action="/guild/${guildId}/ignored-channels/delete">
-              <input type="hidden" name="channel_id" value="${c.channel_id}" />
-              <button type="submit">Delete</button>
-            </form>
-          </li>
-        `).join("")}
-      </ul>
 
       <hr/>
 
@@ -3059,21 +3196,371 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
         <input type="hidden" name="claim_all_done" value="1" />
         <button type="submit">Lock claim-all</button>
       </form>
+      </section>
+
+      <section class="module-pane" style="${activeModule === "logging" ? "" : "display:none;"}">
+
+      <h3>Event Logging Controls</h3>
+      <form method="post" action="/guild/${guildId}/logging-events">
+        <table>
+          <tr><th>Event</th><th>Enabled</th><th>Channel Override</th></tr>
+          ${LOG_EVENT_DEFS.map((def) => {
+            const cfg = eventConfigMap.get(def.key);
+            const enabled = cfg ? Number(cfg.enabled) === 1 : true;
+            const channelId = cfg?.channel_id || "";
+            return `
+              <tr>
+                <td>${escapeHtml(def.label)}</td>
+                <td class="event-toggle-cell"><input class="event-toggle" type="checkbox" name="enabled_${def.key}" ${enabled ? "checked" : ""} /></td>
+                <td>
+                  <select name="channel_${def.key}">
+                    <option value="">Default log channel</option>
+                    ${textChannels.map((c) => `<option value="${c.id}" ${channelId === c.id ? "selected" : ""}>#${escapeHtml(c.name)}</option>`).join("")}
+                  </select>
+                </td>
+              </tr>
+            `;
+          }).join("")}
+        </table>
+        <button type="submit">Save Event Logging Controls</button>
+      </form>
+
+      <h3>Actor Exclusions (Users/Roles)</h3>
+      <form method="post" action="/guild/${guildId}/logging-actors/add">
+        <label>User ID <input name="user_id" /></label>
+        <label>Role
+          <select name="role_id">
+            <option value="">None</option>
+            ${roleOptions.map((r) => `<option value="${r.id}">@${escapeHtml(r.name)}</option>`).join("")}
+          </select>
+        </label>
+        <button type="submit">Add Actor Exclusion</button>
+      </form>
+
+      <ul>
+        ${actorExclusions.map((entry) => {
+          const role = roleOptions.find((r) => r.id === entry.target_id);
+          const label = entry.target_type === "role"
+            ? `@${role?.name || entry.target_id}`
+            : entry.target_id;
+          return `
+            <li>
+              ${escapeHtml(entry.target_type)} → ${escapeHtml(label)}
+              <form style="display:inline" method="post" action="/guild/${guildId}/logging-actors/delete">
+                <input type="hidden" name="target_id" value="${escapeHtml(entry.target_id)}" />
+                <button type="submit">Delete</button>
+              </form>
+            </li>
+          `;
+        }).join("")}
+      </ul>
+
+      <h3>Logging Exclusions</h3>
+      <form method="post" action="/guild/${guildId}/logging-exclusions/add">
+        <label>Channel
+          <select name="channel_id">
+            <option value="">None</option>
+            ${textChannels.map((c) => `<option value="${c.id}">#${escapeHtml(c.name)}</option>`).join("")}
+            ${voiceChannels.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("")}
+          </select>
+        </label>
+        <label>Category
+          <select name="category_id">
+            <option value="">None</option>
+            ${categories.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("")}
+          </select>
+        </label>
+        <button type="submit">Add Exclusion</button>
+      </form>
+      <p style="margin-top:6px;opacity:0.8;">The log channel is always auto-excluded.</p>
+
+      <ul>
+        ${loggingExclusions.map((entry) => {
+          const label = entry.target_type === "category"
+            ? (categories.find((c) => c.id === entry.target_id)?.name || entry.target_id)
+            : (guild.channels.cache.get(entry.target_id)?.name || entry.target_id);
+          return `
+            <li>
+              ${escapeHtml(entry.target_type)} → ${escapeHtml(label)}
+              <form style="display:inline" method="post" action="/guild/${guildId}/logging-exclusions/delete">
+                <input type="hidden" name="target_id" value="${escapeHtml(entry.target_id)}" />
+                <button type="submit">Delete</button>
+              </form>
+            </li>
+          `;
+        }).join("")}
+      </ul>
+
+      </section>
+
+      <section class="module-pane" style="${activeModule === "reactionroles" ? "" : "display:none;"}">
+      <h3>Reaction Roles</h3>
+      <form class="admin-grid-form" method="post" action="/guild/${guildId}/reaction-roles/add">
+        <label>Channel
+          <select name="channel_id">
+            <option value="">Select channel</option>
+            ${textChannels.map((c) => `<option value="${c.id}">#${escapeHtml(c.name)}</option>`).join("")}
+          </select>
+        </label>
+        <label>Message ID
+          <input name="message_id" placeholder="Message ID to react on" />
+        </label>
+        <label>Emoji
+          <input name="emoji_key" placeholder="😀 or <:name:id>" />
+        </label>
+        <label>Role
+          <select name="role_id">
+            <option value="">Select role</option>
+            ${roleOptions.map((r) => `<option value="${r.id}">@${escapeHtml(r.name)}</option>`).join("")}
+          </select>
+        </label>
+        <label style="min-width:140px;flex:0 0 140px;">
+          <span>Remove on unreact</span>
+          <input type="checkbox" name="remove_on_unreact" checked />
+        </label>
+        <button type="submit">Save Reaction Role</button>
+      </form>
+
+      <ul>
+        ${reactionRoleBindings.map((row) => {
+          const channelName = guild.channels.cache.get(row.channel_id)?.name || row.channel_id;
+          const roleName = guild.roles.cache.get(row.role_id)?.name || row.role_id;
+          return `
+            <li>
+              #${escapeHtml(channelName)} • message ${escapeHtml(row.message_id)} • emoji ${escapeHtml(row.emoji_key)} → @${escapeHtml(roleName)} ${Number(row.remove_on_unreact) === 1 ? "(removes on unreact)" : ""}
+              <form style="display:inline" method="post" action="/guild/${guildId}/reaction-roles/delete">
+                <input type="hidden" name="message_id" value="${escapeHtml(row.message_id)}" />
+                <input type="hidden" name="emoji_key" value="${escapeHtml(row.emoji_key)}" />
+                <button type="submit">Delete</button>
+              </form>
+            </li>
+          `;
+        }).join("") || "<li>No reaction roles configured.</li>"}
+      </ul>
+
+      </section>
+
+      <section class="module-pane" style="${activeModule === "tickets" ? "" : "display:none;"}">
+      <h3>Ticket System</h3>
+      <form class="admin-grid-form" method="post" action="/guild/${guildId}/tickets/settings">
+        <label style="min-width:120px;flex:0 0 120px;">
+          <span>Enabled</span>
+          <input type="checkbox" name="enabled" ${ticketSettings.enabled ? "checked" : ""} />
+        </label>
+        <label>Panel Channel
+          <select name="panel_channel_id">
+            <option value="">None</option>
+            ${textChannels.map((c) => `<option value="${c.id}" ${ticketSettings.panel_channel_id === c.id ? "selected" : ""}>#${escapeHtml(c.name)}</option>`).join("")}
+          </select>
+        </label>
+        <label>Category
+          <select name="category_id">
+            <option value="">None</option>
+            ${categories.map((c) => `<option value="${c.id}" ${ticketSettings.category_id === c.id ? "selected" : ""}>${escapeHtml(c.name)}</option>`).join("")}
+          </select>
+        </label>
+        <label>Support Role
+          <select name="support_role_id">
+            <option value="">None</option>
+            ${roleOptions.map((r) => `<option value="${r.id}" ${ticketSettings.support_role_id === r.id ? "selected" : ""}>@${escapeHtml(r.name)}</option>`).join("")}
+          </select>
+        </label>
+        <label>Ticket Prefix
+          <input name="ticket_prefix" value="${escapeHtml(ticketSettings.ticket_prefix || "ticket")}" />
+        </label>
+        <button type="submit">Save Ticket Settings</button>
+      </form>
+
+      <form method="post" action="/guild/${guildId}/tickets/panel" style="margin-top:8px;">
+        <button type="submit">Send Ticket Panel</button>
+      </form>
+
+      <table>
+        <tr><th>Open Ticket Channel</th><th>Opened By</th><th>Created</th><th>Actions</th></tr>
+        ${openTickets.map((t) => {
+          const chName = guild.channels.cache.get(t.channel_id)?.name || t.channel_id;
+          const opener = guild.members.cache.get(t.opener_id);
+          const openerName = opener ? `${opener.displayName} (${opener.user.username})` : t.opener_id;
+          const created = Number.isFinite(Number(t.created_at)) ? new Date(Number(t.created_at)).toLocaleString() : "-";
+          return `
+            <tr>
+              <td>${escapeHtml(chName)}</td>
+              <td>${escapeHtml(openerName)}</td>
+              <td>${escapeHtml(created)}</td>
+              <td>
+                <form method="post" action="/guild/${guildId}/tickets/close" style="display:inline;">
+                  <input type="hidden" name="channel_id" value="${escapeHtml(t.channel_id)}" />
+                  <button type="submit">Close</button>
+                </form>
+              </td>
+            </tr>
+          `;
+        }).join("") || `<tr><td colspan="4">No open tickets.</td></tr>`}
+      </table>
+
+      </section>
+
+      <section class="module-pane" style="${activeModule === "xp" ? "" : "display:none;"}">
+      <h3>XP Settings</h3>
+      <form method="post" action="/guild/${guildId}/settings">
+        <label>Message XP Min <input name="message_xp_min" value="${escapeHtml(settings.message_xp_min)}" /></label><br/>
+        <label>Message XP Max <input name="message_xp_max" value="${escapeHtml(settings.message_xp_max)}" /></label><br/>
+        <label>Message Cooldown Seconds <input name="message_cooldown_seconds" value="${escapeHtml(settings.message_cooldown_seconds)}" /></label><br/>
+        <label>Reaction XP <input name="reaction_xp" value="${escapeHtml(settings.reaction_xp)}" /></label><br/>
+        <label>Reaction Cooldown Seconds <input name="reaction_cooldown_seconds" value="${escapeHtml(settings.reaction_cooldown_seconds)}" /></label><br/>
+        <label>Voice XP Per Minute <input name="voice_xp_per_minute" value="${escapeHtml(settings.voice_xp_per_minute)}" /></label><br/><br/>
+        <button type="submit">Save XP Settings</button>
+      </form>
+
+      <h3>XP User Manager</h3>
+      <form class="admin-grid-form" method="post" action="/guild/${guildId}/xp/manage">
+        <label>User ID <input name="user_id" /></label>
+        <label>Action
+          <select name="action">
+            <option value="add">Add</option>
+            <option value="set">Set</option>
+          </select>
+        </label>
+        <label>Amount <input name="amount" /></label>
+        <button type="submit">Apply XP</button>
+      </form>
+
+      </section>
+
+      <section class="module-pane" style="${activeModule === "customization" ? "" : "display:none;"}">
+      <h3>Rank Card Customization Unlocks</h3>
+      <form method="post" action="/guild/${guildId}/customization-unlocks">
+        <table style="border-collapse:collapse;">
+          <tr><th style="text-align:left;">Feature</th><th style="text-align:left;">Required Level</th></tr>
+          ${customizationOptions.map(opt => `
+            <tr>
+              <td>${escapeHtml(opt.label)}</td>
+              <td><input type="number" min="1" max="1000" name="${opt.key}" value="${unlocks[opt.key] ?? 1}" style="width:60px" /></td>
+            </tr>
+          `).join("")}
+        </table>
+        <button type="submit">Save Customization Unlocks</button>
+      </form>
+
+      </section>
+
+      <section class="module-pane" style="${activeModule === "xp" ? "" : "display:none;"}">
+      <h3>Level-up Messages</h3>
+      <form method="post" action="/guild/${guildId}/levelup-settings">
+        <label>Level-up Channel
+          <select name="level_up_channel_id">
+            <option value="" ${!settings.level_up_channel_id ? "selected" : ""}>Same channel as message</option>
+            ${textChannels.map(ch => `
+              <option value="${ch.id}" ${settings.level_up_channel_id === ch.id ? "selected" : ""}>
+                #${escapeHtml(ch.name)}
+              </option>
+            `).join("")}
+          </select>
+        </label>
+        <br/><br/>
+
+        <label>
+          Level-up Message (supports {user}, {level}, {xp})<br/>
+          <input name="level_up_message"
+                 value="${escapeHtml(settings.level_up_message || "")}"
+                 style="max-width:520px;width:100%;box-sizing:border-box;" />
+        </label>
+        <br/><br/>
+
+        <button type="submit">Save Level-up Settings</button>
+      </form>
+
+      <form method="post" action="/guild/${guildId}/test-levelup" style="margin-top:10px;">
+        <button type="submit">Test Level-up Message</button>
+      </form>
 
       <hr/>
 
+      <h3>Level Roles</h3>
+      <form class="admin-grid-form" method="post" action="/guild/${guildId}/level-roles">
+        <label>Level <input name="level" /></label>
+        <label>Role
+          <select name="role_id">
+            <option value="">Select role</option>
+            ${roleOptions.map((r) => `<option value="${r.id}">@${escapeHtml(r.name)}</option>`).join("")}
+          </select>
+        </label>
+        <button type="submit">Add/Update</button>
+      </form>
+
+      <ul>
+        ${levelRoles.map((r) => {
+          const roleName = guild.roles.cache.get(r.role_id)?.name || "Unknown role";
+          return `
+          <li>
+            Level ${r.level} → @${escapeHtml(roleName)}
+            <form style="display:inline" method="post" action="/guild/${guildId}/level-roles/delete">
+              <input type="hidden" name="level" value="${r.level}" />
+              <button type="submit">Delete</button>
+            </form>
+          </li>
+        `;
+        }).join("")}
+      </ul>
+
+      <hr/>
+
+      <h3>Ignored Channels (No XP)</h3>
+      <form class="admin-grid-form" method="post" action="/guild/${guildId}/ignored-channels">
+        <label>Text Channel
+          <select name="text_channel_id">
+            <option value="">None</option>
+            ${textChannels.map((c) => `<option value="${c.id}">#${escapeHtml(c.name)}</option>`).join("")}
+          </select>
+        </label>
+        <label>Voice Channel
+          <select name="voice_channel_id">
+            <option value="">None</option>
+            ${voiceChannels.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("")}
+          </select>
+        </label>
+        <label>Or Channel ID (advanced) <input name="channel_id" /></label>
+        <label>Type 
+          <select name="channel_type">
+            <option value="text">Text</option>
+            <option value="voice">Voice</option>
+          </select>
+        </label>
+        <button type="submit">Add</button>
+      </form>
+
+      <ul>
+        ${ignoredChannels.map((c) => {
+          const channelName = guild.channels.cache.get(c.channel_id)?.name || c.channel_id;
+          return `
+          <li>
+            ${escapeHtml(c.channel_type)} channel → ${escapeHtml(channelName)}
+            <form style="display:inline" method="post" action="/guild/${guildId}/ignored-channels/delete">
+              <input type="hidden" name="channel_id" value="${c.channel_id}" />
+              <button type="submit">Delete</button>
+            </form>
+          </li>
+        `;
+        }).join("")}
+      </ul>
+
+      </section>
+
+      <section class="module-pane" style="${activeModule === "voice" ? "" : "display:none;"}">
       <h3>Private Voice Rooms</h3>
       <table>
         <tr><th>Owner</th><th>Voice Channel</th><th>Text Channel</th><th>Last Active</th><th>Actions</th></tr>
         ${privateRooms.map((r) => {
           const owner = guild.members.cache.get(r.owner_id);
           const ownerName = owner ? `${owner.displayName} (${owner.user.username})` : r.owner_id;
+          const voiceName = guild.channels.cache.get(r.voice_channel_id)?.name || r.voice_channel_id;
+          const textName = guild.channels.cache.get(r.text_channel_id)?.name || r.text_channel_id;
           const lastActive = Number.isFinite(Number(r.last_active_at)) ? new Date(Number(r.last_active_at)).toLocaleString() : "-";
           return `
             <tr>
               <td>${escapeHtml(ownerName)}</td>
-              <td>${escapeHtml(r.voice_channel_id)}</td>
-              <td>${escapeHtml(r.text_channel_id)}</td>
+              <td>${escapeHtml(voiceName)}</td>
+              <td>${escapeHtml(textName)}</td>
               <td>${escapeHtml(lastActive)}</td>
               <td>
                 <form method="post" action="/guild/${guildId}/private-rooms/delete" style="display:inline;">
@@ -3085,6 +3572,24 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
           `;
         }).join("")}
       </table>
+
+      </section>
+
+      <script>
+        (function () {
+          const input = document.getElementById('moduleSearch');
+          const grid = document.getElementById('moduleGrid');
+          if (!input || !grid) return;
+          input.addEventListener('input', function () {
+            const needle = String(this.value || '').toLowerCase().trim();
+            const cards = grid.querySelectorAll('.module-card');
+            cards.forEach((card) => {
+              const hay = String(card.getAttribute('data-module-label') || '').toLowerCase();
+              card.style.display = !needle || hay.includes(needle) ? '' : 'none';
+            });
+          });
+        })();
+      </script>
     `));
   });
 
@@ -3120,13 +3625,18 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
       const modRoleId = String(req.body.mod_role_id || "").trim() || null;
       const logChannelId = String(req.body.log_channel_id || "").trim() || null;
       const commandPrefixRaw = String(req.body.command_prefix || "!").trim();
+      const newAccountWarnDaysRaw = Number.parseInt(String(req.body.new_account_warn_days || "1"), 10);
+      const newAccountWarnDays = Number.isInteger(newAccountWarnDaysRaw) && newAccountWarnDaysRaw >= 0
+        ? newAccountWarnDaysRaw
+        : 1;
       const commandPrefix = (!commandPrefixRaw || commandPrefixRaw.length > 3 || /\s/.test(commandPrefixRaw))
         ? "!"
         : commandPrefixRaw;
       await updateGuildSettings(guildId, {
         mod_role_id: modRoleId,
         log_channel_id: logChannelId,
-        command_prefix: commandPrefix
+        command_prefix: commandPrefix,
+        new_account_warn_days: newAccountWarnDays
       });
       return res.redirect(`/guild/${guildId}`);
     } catch (e) {
@@ -3164,6 +3674,143 @@ app.post("/lop/customize", upload.single("bgimage"), async (req, res) => {
       return res.redirect(`/guild/${guildId}`);
     } catch (e) {
       console.error("logging-exclusions delete error:", e);
+      return res.status(500).send("Internal Server Error");
+    }
+  });
+
+  app.post("/guild/:guildId/logging-events", requireGuildAdmin, async (req, res) => {
+    try {
+      const guildId = req.params.guildId;
+      for (const def of LOG_EVENT_DEFS) {
+        const enabled = req.body[`enabled_${def.key}`] === "on";
+        const channelId = String(req.body[`channel_${def.key}`] || "").trim() || null;
+        await upsertLoggingEventConfig(guildId, def.key, enabled, channelId);
+      }
+      return res.redirect(`/guild/${guildId}`);
+    } catch (e) {
+      console.error("logging-events save error:", e);
+      return res.status(500).send("Internal Server Error");
+    }
+  });
+
+  app.post("/guild/:guildId/logging-actors/add", requireGuildAdmin, async (req, res) => {
+    try {
+      const guildId = req.params.guildId;
+      const userId = String(req.body.user_id || "").trim();
+      const roleId = String(req.body.role_id || "").trim();
+      if (userId) await addLoggingActorExclusion(guildId, userId, "user");
+      if (roleId) await addLoggingActorExclusion(guildId, roleId, "role");
+      return res.redirect(`/guild/${guildId}`);
+    } catch (e) {
+      console.error("logging-actors add error:", e);
+      return res.status(500).send("Internal Server Error");
+    }
+  });
+
+  app.post("/guild/:guildId/logging-actors/delete", requireGuildAdmin, async (req, res) => {
+    try {
+      const guildId = req.params.guildId;
+      const targetId = String(req.body.target_id || "").trim();
+      if (!targetId) return res.status(400).send("Target ID required.");
+      await removeLoggingActorExclusion(guildId, targetId);
+      return res.redirect(`/guild/${guildId}`);
+    } catch (e) {
+      console.error("logging-actors delete error:", e);
+      return res.status(500).send("Internal Server Error");
+    }
+  });
+
+  app.post("/guild/:guildId/reaction-roles/add", requireGuildAdmin, async (req, res) => {
+    try {
+      const guildId = req.params.guildId;
+      const channelId = String(req.body.channel_id || "").trim();
+      const messageId = String(req.body.message_id || "").trim();
+      const emojiKey = normalizeEmojiKey(String(req.body.emoji_key || "").trim());
+      const roleId = String(req.body.role_id || "").trim();
+      const removeOnUnreact = req.body.remove_on_unreact === "on";
+
+      if (!channelId || !messageId || !emojiKey || !roleId) {
+        return res.status(400).send("Channel, message ID, emoji, and role are required.");
+      }
+
+      await upsertReactionRoleBinding(guildId, channelId, messageId, emojiKey, roleId, removeOnUnreact);
+      return res.redirect(`/guild/${guildId}?module=reactionroles`);
+    } catch (e) {
+      console.error("reaction-roles add error:", e);
+      return res.status(500).send("Internal Server Error");
+    }
+  });
+
+  app.post("/guild/:guildId/reaction-roles/delete", requireGuildAdmin, async (req, res) => {
+    try {
+      const guildId = req.params.guildId;
+      const messageId = String(req.body.message_id || "").trim();
+      const emojiKey = normalizeEmojiKey(String(req.body.emoji_key || "").trim());
+      if (!messageId || !emojiKey) return res.status(400).send("Message ID and emoji are required.");
+
+      await removeReactionRoleBinding(guildId, messageId, emojiKey);
+      return res.redirect(`/guild/${guildId}?module=reactionroles`);
+    } catch (e) {
+      console.error("reaction-roles delete error:", e);
+      return res.status(500).send("Internal Server Error");
+    }
+  });
+
+  app.post("/guild/:guildId/tickets/settings", requireGuildAdmin, async (req, res) => {
+    try {
+      const guildId = req.params.guildId;
+      const enabled = req.body.enabled === "on";
+      const panelChannelId = String(req.body.panel_channel_id || "").trim() || null;
+      const categoryId = String(req.body.category_id || "").trim() || null;
+      const supportRoleId = String(req.body.support_role_id || "").trim() || null;
+      const ticketPrefix = String(req.body.ticket_prefix || "ticket").trim() || "ticket";
+
+      await upsertTicketSettings(guildId, {
+        enabled,
+        panel_channel_id: panelChannelId,
+        category_id: categoryId,
+        support_role_id: supportRoleId,
+        ticket_prefix: ticketPrefix
+      });
+
+      return res.redirect(`/guild/${guildId}?module=tickets`);
+    } catch (e) {
+      console.error("tickets settings save error:", e);
+      return res.status(500).send("Internal Server Error");
+    }
+  });
+
+  app.post("/guild/:guildId/tickets/panel", requireGuildAdmin, async (req, res) => {
+    try {
+      const guildId = req.params.guildId;
+      const guild = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(() => null);
+      if (!guild) return res.status(404).send("Guild not found.");
+
+      const result = await sendTicketPanel(guild);
+      if (!result.ok) return res.status(400).send(result.reason || "Could not send ticket panel.");
+
+      return res.redirect(`/guild/${guildId}?module=tickets`);
+    } catch (e) {
+      console.error("tickets panel send error:", e);
+      return res.status(500).send("Internal Server Error");
+    }
+  });
+
+  app.post("/guild/:guildId/tickets/close", requireGuildAdmin, async (req, res) => {
+    try {
+      const guildId = req.params.guildId;
+      const channelId = String(req.body.channel_id || "").trim();
+      if (!channelId) return res.status(400).send("Channel ID required.");
+
+      const guild = client.guilds.cache.get(guildId) || await client.guilds.fetch(guildId).catch(() => null);
+      if (!guild) return res.status(404).send("Guild not found.");
+
+      const result = await closeTicketChannel(guild, channelId, req.user?.id || null);
+      if (!result.ok) return res.status(400).send(result.reason || "Could not close ticket.");
+
+      return res.redirect(`/guild/${guildId}?module=tickets`);
+    } catch (e) {
+      console.error("tickets close error:", e);
       return res.status(500).send("Internal Server Error");
     }
   });
