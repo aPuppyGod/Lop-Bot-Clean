@@ -296,6 +296,8 @@ async function cmdAdminCommands(message) {
   if (!isAdminOrManager(message.member)) return;
   const embed = compactEmbed("Admin Commands", [
     "`!admin-commands` `/admin-commands`",
+    "`!say [#channel|channel-id] <message>` (bot manager only)",
+    "`!reply [#channel|channel-id] <message-id> <message>` (bot manager only)",
     "`!xp add/set <user> <amount>` `/xp`",
     "`!recalc-levels` `/recalc-levels`",
     "`!sync-roles` `/sync-roles`",
@@ -303,6 +305,129 @@ async function cmdAdminCommands(message) {
     "`!claim-all [force]` `/claim-all`"
   ]);
   await message.reply({ embeds: [embed] }).catch(() => {});
+}
+
+async function cmdSayAsBot(message, args) {
+  if (message.member?.id !== BOT_MANAGER_ID) {
+    await message.reply("Only the bot manager can use this command.").catch(() => {});
+    return;
+  }
+
+  if (!message.guild) {
+    await message.reply("This command must be used in a server.").catch(() => {});
+    return;
+  }
+
+  if (!Array.isArray(args) || args.length === 0) {
+    await message.reply("Usage: `!say [#channel|channel-id] <message>`").catch(() => {});
+    return;
+  }
+
+  const first = String(args[0] || "").trim();
+  const mentionMatch = first.match(/^<#(\d{15,21})>$/);
+  const idMatch = /^\d{15,21}$/.test(first) ? first : null;
+  const targetChannelId = mentionMatch?.[1] || idMatch;
+
+  let targetChannel = message.channel;
+  let messageText = args.join(" ").trim();
+
+  if (targetChannelId) {
+    targetChannel = message.guild.channels.cache.get(targetChannelId)
+      || await message.guild.channels.fetch(targetChannelId).catch(() => null);
+    messageText = args.slice(1).join(" ").trim();
+  }
+
+  if (!targetChannel || !targetChannel.isTextBased?.()) {
+    await message.reply("Target channel must be a text channel.").catch(() => {});
+    return;
+  }
+
+  if (!messageText) {
+    await message.reply("Usage: `!say [#channel|channel-id] <message>`").catch(() => {});
+    return;
+  }
+
+  try {
+    await targetChannel.send({ content: messageText });
+  } catch {
+    await message.reply("I couldn't send that message to the target channel.").catch(() => {});
+    return;
+  }
+
+  // For prefix commands in the same channel, remove the trigger message.
+  // For slash commands (synthetic messages), confirm ephemerally instead.
+  if (targetChannel.id === message.channel.id && !message.isSyntheticInteraction) {
+    await message.delete().catch(() => {});
+    return;
+  }
+
+  await message.reply(`Sent to <#${targetChannel.id}>.`).catch(() => {});
+}
+
+async function cmdReplyAsBot(message, args) {
+  if (message.member?.id !== BOT_MANAGER_ID) {
+    await message.reply("Only the bot manager can use this command.").catch(() => {});
+    return;
+  }
+
+  if (!message.guild) {
+    await message.reply("This command must be used in a server.").catch(() => {});
+    return;
+  }
+
+  if (!Array.isArray(args) || args.length < 2) {
+    await message.reply("Usage: `!reply [#channel|channel-id] <message-id> <message>`").catch(() => {});
+    return;
+  }
+
+  const first = String(args[0] || "").trim();
+  const mentionMatch = first.match(/^<#(\d{15,21})>$/);
+  const idMatch = /^\d{15,21}$/.test(first) ? first : null;
+  const maybeChannelId = mentionMatch?.[1] || idMatch;
+
+  let targetChannel = message.channel;
+  let messageIdArgIndex = 0;
+
+  if (maybeChannelId) {
+    const fetchedChannel = message.guild.channels.cache.get(maybeChannelId)
+      || await message.guild.channels.fetch(maybeChannelId).catch(() => null);
+    if (fetchedChannel?.isTextBased?.()) {
+      targetChannel = fetchedChannel;
+      messageIdArgIndex = 1;
+    }
+  }
+
+  const targetMessageId = String(args[messageIdArgIndex] || "").trim();
+  if (!/^\d{15,21}$/.test(targetMessageId)) {
+    await message.reply("Please provide a valid message ID.").catch(() => {});
+    return;
+  }
+
+  const replyText = args.slice(messageIdArgIndex + 1).join(" ").trim();
+  if (!replyText) {
+    await message.reply("Usage: `!reply [#channel|channel-id] <message-id> <message>`").catch(() => {});
+    return;
+  }
+
+  if (!targetChannel?.isTextBased?.() || !targetChannel.messages?.fetch) {
+    await message.reply("Target channel must be a text channel.").catch(() => {});
+    return;
+  }
+
+  const targetMessage = await targetChannel.messages.fetch(targetMessageId).catch(() => null);
+  if (!targetMessage) {
+    await message.reply("I couldn't find that message in the target channel.").catch(() => {});
+    return;
+  }
+
+  try {
+    await targetMessage.reply({ content: replyText });
+  } catch {
+    await message.reply("I couldn't reply to that message.").catch(() => {});
+    return;
+  }
+
+  await message.reply(`Replied in <#${targetChannel.id}>.`).catch(() => {});
 }
 
 async function cmdSetModRole(message, args) {
@@ -876,6 +1001,33 @@ function parseDurationMs(text) {
   return amount * unitMs;
 }
 
+async function assertCanModerateTarget(message, targetMember, actionLabel = "moderate") {
+  const actor = message?.member;
+  const target = targetMember;
+  if (!actor || !target) return false;
+
+  if (actor.id === target.id) {
+    await message.reply(`You can't ${actionLabel} yourself.`).catch(() => {});
+    return false;
+  }
+
+  if (target.user?.id === message.guild?.ownerId) {
+    await message.reply(`You can't ${actionLabel} the server owner.`).catch(() => {});
+    return false;
+  }
+
+  const actorTop = actor.roles?.highest;
+  const targetTop = target.roles?.highest;
+  if (!actorTop || !targetTop) return false;
+
+  if (targetTop.comparePositionTo(actorTop) >= 0) {
+    await message.reply(`You can't ${actionLabel} someone with an equal or higher role than you.`).catch(() => {});
+    return false;
+  }
+
+  return true;
+}
+
 async function cmdBan(message, args) {
   if (!(await requireModerator(message))) return;
   const arg = args[0] || "";
@@ -886,6 +1038,7 @@ async function cmdBan(message, args) {
   }
 
   const target = pick.member;
+  if (!(await assertCanModerateTarget(message, target, "ban"))) return;
   if (!target.bannable) {
     await message.reply("I can't ban that user.").catch(() => {});
     return;
@@ -920,6 +1073,7 @@ async function cmdKick(message, args) {
   }
 
   const target = pick.member;
+  if (!(await assertCanModerateTarget(message, target, "kick"))) return;
   if (!target.kickable) {
     await message.reply("I can't kick that user.").catch(() => {});
     return;
@@ -941,6 +1095,7 @@ async function cmdMute(message, args) {
   }
 
   const target = pick.member;
+  if (!(await assertCanModerateTarget(message, target, "mute"))) return;
   const durationMs = parseDurationMs(args[1]) || 10 * 60_000;
   const reason = (parseDurationMs(args[1]) ? args.slice(2) : args.slice(1)).join(" ").trim() || "No reason provided";
   if (!target.moderatable) {
@@ -962,6 +1117,7 @@ async function cmdUnmute(message, args) {
   }
 
   const target = pick.member;
+  if (!(await assertCanModerateTarget(message, target, "unmute"))) return;
   const reason = args.slice(1).join(" ").trim() || "No reason provided";
   if (!target.moderatable) {
     await message.reply("I can't unmute that user.").catch(() => {});
@@ -1013,6 +1169,7 @@ async function cmdWarn(message, args) {
     return;
   }
 
+  if (!(await assertCanModerateTarget(message, pick.member, "warn"))) return;
   const reason = args.slice(1).join(" ").trim() || "No reason provided";
   await run(
     `INSERT INTO mod_warnings (guild_id, user_id, moderator_id, reason, created_at)
@@ -1053,6 +1210,7 @@ async function cmdClearWarns(message, args) {
     return;
   }
 
+  if (!(await assertCanModerateTarget(message, pick.member, "clear warnings for"))) return;
   await run(`DELETE FROM mod_warnings WHERE guild_id=? AND user_id=?`, [message.guild.id, pick.member.id]);
   await message.reply(`✅ Cleared warnings for ${pick.member.user.tag}.`).catch(() => {});
 }
@@ -1102,6 +1260,7 @@ async function cmdNick(message, args) {
     return;
   }
 
+  if (!(await assertCanModerateTarget(message, pick.member, "change nickname for"))) return;
   await pick.member.setNickname(nick.slice(0, 32)).catch(() => {});
   trackModerationAction(message, "member_nick_update", { targetUserId: pick.member.id });
   await message.reply(`✅ Updated nickname for ${pick.member.user.tag}.`).catch(() => {});
@@ -1128,6 +1287,8 @@ async function cmdRole(message, args) {
     return;
   }
 
+  if (!(await assertCanModerateTarget(message, pick.member, "update roles for"))) return;
+
   if (pick.member.roles.cache.has(role.id)) {
     trackModerationAction(message, "member_role_update", { targetUserId: pick.member.id });
     await pick.member.roles.remove(role).catch(() => {});
@@ -1150,6 +1311,7 @@ async function cmdSoftban(message, args) {
   }
 
   const target = pick.member;
+  if (!(await assertCanModerateTarget(message, target, "softban"))) return;
   if (!target.bannable) {
     await message.reply("I can't softban that user.").catch(() => {});
     return;
@@ -1456,6 +1618,16 @@ async function executeCommand(message, cmd, args, prefix) {
     return true;
   }
 
+  if (cmd === "say") {
+    await cmdSayAsBot(message, args);
+    return true;
+  }
+
+  if (cmd === "reply") {
+    await cmdReplyAsBot(message, args);
+    return true;
+  }
+
   if (cmd === "rank") {
     await cmdRank(message, args);
     return true;
@@ -1628,6 +1800,23 @@ function buildSlashCommands() {
     { name: "commands", description: "Public commands list" },
     { name: "mod-commands", description: "Moderation commands list", default_member_permissions: slashPerm(DEFAULT_MOD_COMMAND_PERMISSION) },
     { name: "admin-commands", description: "Admin commands list", default_member_permissions: slashPerm(PermissionsBitField.Flags.Administrator) },
+    {
+      name: "say",
+      description: "Post a message as the bot (manager only)",
+      options: [
+        { type: 7, name: "channel", description: "Target channel (defaults to current)", required: false },
+        { type: 3, name: "message", description: "Message to send", required: true }
+      ]
+    },
+    {
+      name: "reply",
+      description: "Reply as the bot to a specific message (manager only)",
+      options: [
+        { type: 7, name: "channel", description: "Channel containing the target message (defaults to current)", required: false },
+        { type: 3, name: "message_id", description: "ID of the message to reply to", required: true },
+        { type: 3, name: "message", description: "Reply content", required: true }
+      ]
+    },
     { name: "mod-role", description: "Set mod role", default_member_permissions: slashPerm(PermissionsBitField.Flags.Administrator), options: [{ type: 8, name: "role", description: "Role", required: true }] },
     { name: "prefix", description: "Set command prefix", default_member_permissions: slashPerm(PermissionsBitField.Flags.Administrator), options: [{ type: 3, name: "value", description: "New prefix (1-3 chars)", required: true }] },
     { name: "lop-bot", description: "Get website URL" },
@@ -1704,6 +1893,7 @@ async function handleSlashCommand(interaction) {
 
   const userOption = interaction.options.getUser("user");
   const roleOption = interaction.options.getRole("role");
+  const channelOption = interaction.options.getChannel("channel");
   const args = [];
 
   if (name === "xp") {
@@ -1744,6 +1934,16 @@ async function handleSlashCommand(interaction) {
   } else if (name === "prefix") {
     const value = optionValue(interaction, "value");
     if (value) args.push(String(value));
+  } else if (name === "say") {
+    if (channelOption?.id) args.push(channelOption.id);
+    const text = optionValue(interaction, "message");
+    if (text) args.push(...String(text).split(/\s+/));
+  } else if (name === "reply") {
+    if (channelOption?.id) args.push(channelOption.id);
+    const messageId = optionValue(interaction, "message_id");
+    const text = optionValue(interaction, "message");
+    if (messageId) args.push(String(messageId));
+    if (text) args.push(...String(text).split(/\s+/));
   } else {
     const keys = ["page", "limit", "name", "count", "seconds"];
     for (const key of keys) {
