@@ -1804,17 +1804,17 @@ function buildSlashCommands() {
       name: "say",
       description: "Post a message as the bot (manager only)",
       options: [
-        { type: 7, name: "channel", description: "Target channel (defaults to current)", required: false },
-        { type: 3, name: "message", description: "Message to send", required: true }
+        { type: 3, name: "message", description: "Message to send", required: true },
+        { type: 7, name: "channel", description: "Target channel (defaults to current)", required: false }
       ]
     },
     {
       name: "reply",
       description: "Reply as the bot to a specific message (manager only)",
       options: [
-        { type: 7, name: "channel", description: "Channel containing the target message (defaults to current)", required: false },
         { type: 3, name: "message_id", description: "ID of the message to reply to", required: true },
-        { type: 3, name: "message", description: "Reply content", required: true }
+        { type: 3, name: "message", description: "Reply content", required: true },
+        { type: 7, name: "channel", description: "Channel containing the target message (defaults to current)", required: false }
       ]
     },
     { name: "mod-role", description: "Set mod role", default_member_permissions: slashPerm(PermissionsBitField.Flags.Administrator), options: [{ type: 8, name: "role", description: "Role", required: true }] },
