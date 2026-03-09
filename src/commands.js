@@ -1594,8 +1594,14 @@ async function handleCommands(message) {
   if (!message || !message.content) return false;
 
   if (!message.guild) return false;
-  const activePrefixes = await getActivePrefixes(message);
-  const parsed = parseCommand(message.content, activePrefixes);
+  const content = String(message.content || "");
+  const modPrefix = await getModPrefix(message.guild.id);
+
+  // Explicit prefix routing: ! for general/admin, configured prefix for mod commands.
+  const prefixesToTry = [DEFAULT_PREFIX];
+  if (modPrefix && modPrefix !== DEFAULT_PREFIX) prefixesToTry.push(modPrefix);
+
+  const parsed = parseCommand(content, prefixesToTry);
   if (!parsed) return false;
 
   return await executeCommand(message, parsed.cmd, parsed.args, parsed.prefix);
