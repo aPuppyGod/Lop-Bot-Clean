@@ -11,7 +11,7 @@ const fs = require("fs");
 const path = require("path");
 
 const DEFAULT_PREFIX = "!";
-const LEGACY_PREFIX = "?";
+const DEFAULT_MOD_PREFIX = "?";
 const BOT_MANAGER_ID = process.env.BOT_MANAGER_ID || "900758140499398676";
 
 const MODERATION_PERMISSION = PermissionsBitField.Flags.ModerateMembers;
@@ -111,11 +111,34 @@ function parseCommand(content, prefixes) {
 }
 
 async function getActivePrefixes(message) {
-  const configured = (await getGuildSettings(message.guild.id).catch(() => null))?.command_prefix || DEFAULT_PREFIX;
-  const prefix = String(configured || DEFAULT_PREFIX).trim() || DEFAULT_PREFIX;
-  const list = [prefix];
-  if (prefix !== LEGACY_PREFIX) list.push(LEGACY_PREFIX);
-  return list;
+  const configured = (await getGuildSettings(message.guild.id).catch(() => null))?.command_prefix || DEFAULT_MOD_PREFIX;
+  const modPrefix = String(configured || DEFAULT_MOD_PREFIX).trim() || DEFAULT_MOD_PREFIX;
+  return [...new Set([DEFAULT_PREFIX, modPrefix])];
+}
+
+async function getModPrefix(guildId) {
+  const configured = (await getGuildSettings(guildId).catch(() => null))?.command_prefix || DEFAULT_MOD_PREFIX;
+  return String(configured || DEFAULT_MOD_PREFIX).trim() || DEFAULT_MOD_PREFIX;
+}
+
+function isModerationCommand(cmd) {
+  return new Set([
+    "ban",
+    "unban",
+    "kick",
+    "mute",
+    "unmute",
+    "purge",
+    "warn",
+    "warnings",
+    "clearwarns",
+    "lock",
+    "unlock",
+    "slowmode",
+    "nick",
+    "role",
+    "softban"
+  ]).has(cmd);
 }
 
 function trackModerationAction(message, action, data = {}) {
@@ -273,21 +296,22 @@ async function cmdModCommands(message) {
     await message.reply("Only the configured mod role can use this command list.").catch(() => {});
     return;
   }
+  const modPrefix = await getModPrefix(message.guild.id);
   const embed = compactEmbed("Moderation Commands", [
     "`!mod-role <role-id>` `/mod-role`",
-    "`?ban <user> [reason]` `/ban`",
-    "`?unban <user-id> [reason]` `/unban`",
-    "`?kick <user> [reason]` `/kick`",
-    "`?mute <user> [duration] [reason]` `/mute`",
-    "`?unmute <user> [reason]` `/unmute`",
-    "`?purge <count>` `/purge`",
-    "`?warn <user> [reason]` `/warn`",
-    "`?warnings <user>` `/warnings`",
-    "`?clearwarns <user>` `/clearwarns`",
-    "`?nick <user> <nick>` `/nick`",
-    "`?role <user> <role-id>` `/role`",
-    "`?softban <user> [reason]` `/softban`",
-    "`?lock` `?unlock` `?slowmode <seconds>` and matching `/lock` `/unlock` `/slowmode`"
+    `\`${modPrefix}ban <user> [reason]\` \`/ban\``,
+    `\`${modPrefix}unban <user-id> [reason]\` \`/unban\``,
+    `\`${modPrefix}kick <user> [reason]\` \`/kick\``,
+    `\`${modPrefix}mute <user> [duration] [reason]\` \`/mute\``,
+    `\`${modPrefix}unmute <user> [reason]\` \`/unmute\``,
+    `\`${modPrefix}purge <count>\` \`/purge\``,
+    `\`${modPrefix}warn <user> [reason]\` \`/warn\``,
+    `\`${modPrefix}warnings <user>\` \`/warnings\``,
+    `\`${modPrefix}clearwarns <user>\` \`/clearwarns\``,
+    `\`${modPrefix}nick <user> <nick>\` \`/nick\``,
+    `\`${modPrefix}role <user> <role-id>\` \`/role\``,
+    `\`${modPrefix}softban <user> [reason]\` \`/softban\``,
+    `\`${modPrefix}lock\` \`${modPrefix}unlock\` \`${modPrefix}slowmode <seconds>\` and matching \`/lock\` \`/unlock\` \`/slowmode\``
   ]);
   await message.reply({ embeds: [embed] }).catch(() => {});
 }
@@ -1579,6 +1603,20 @@ async function handleCommands(message) {
 
 async function executeCommand(message, cmd, args, prefix) {
   if (!message.guild) return false;
+
+  if (prefix !== "/") {
+    const modPrefix = await getModPrefix(message.guild.id);
+    const isModCmd = isModerationCommand(cmd);
+
+    if (isModCmd && prefix !== modPrefix) {
+      await message.reply(`Use \`${modPrefix}${cmd}\` for this moderation command.`).catch(() => {});
+      return true;
+    }
+
+    if (!isModCmd && prefix !== DEFAULT_PREFIX) {
+      return false;
+    }
+  }
 
   if (cmd === "lop-bot" || cmd === "lopbot") {
     const publicUrl = process.env.LOPBOT_PUBLIC_URL || "https://lop-bot-clean-production.up.railway.app";
