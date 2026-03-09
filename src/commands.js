@@ -354,14 +354,11 @@ async function cmdSayAsBot(message, args) {
     return;
   }
 
-  // For prefix commands in the same channel, remove the trigger message.
-  // For slash commands (synthetic messages), confirm ephemerally instead.
-  if (targetChannel.id === message.channel.id && !message.isSyntheticInteraction) {
+  // Only emit the requested output message; avoid secondary success confirmations.
+  // For prefix usage, try to remove the trigger message for cleaner UX.
+  if (!message.isSyntheticInteraction) {
     await message.delete().catch(() => {});
-    return;
   }
-
-  await message.reply(`Sent to <#${targetChannel.id}>.`).catch(() => {});
 }
 
 async function cmdReplyAsBot(message, args) {
@@ -427,7 +424,10 @@ async function cmdReplyAsBot(message, args) {
     return;
   }
 
-  await message.reply(`Replied in <#${targetChannel.id}>.`).catch(() => {});
+  // Only emit the reply itself; avoid a second success message.
+  if (!message.isSyntheticInteraction) {
+    await message.delete().catch(() => {});
+  }
 }
 
 async function cmdSetModRole(message, args) {
